@@ -10,6 +10,7 @@
 #include "i2c_hm3301.h"
 #include "uart_gps.h"
 
+
 void app_main(void) {
   uint8_t data_rd[HM3301_BIT_LEN];
   struct hm3301_pm ret;
@@ -17,7 +18,7 @@ void app_main(void) {
   init_i2c_hm3301();
   init_gps_uart();
 
-  vTaskDelay(pdMS_TO_TICKS(30000));
+  vTaskDelay(pdMS_TO_TICKS(5000));
 
   while (true) {
     ret = i2c_hm3301_read(data_rd);
