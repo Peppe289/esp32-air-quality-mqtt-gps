@@ -101,7 +101,15 @@ static void gps_data(nmea_s *data, nmea_uart_data_s *nmea_uart_data) {
            nmea_uart_data->position.longitude.degrees,
            nmea_uart_data->position.longitude.minutes,
            (char)nmea_uart_data->position.longitude.cardinal);
+
+      nmea_uart_data->time = ((nmea_gpgga_s *)data)->time;
+      char buf[100];
+      if (strftime(buf, sizeof(buf), "%H:%M:%S",
+                   (const struct tm *)&(((nmea_gpgga_s *)data)->time))) {
+        LOGD("Time: %s\n", buf);
+      }
     }
+
     nmea_free(data);
   }
 }

@@ -18,6 +18,7 @@ typedef struct {
     nmea_position longitude;
     nmea_position latitude;
   } position;
+  struct tm time;
 } nmea_uart_data_s;
 
 //nmea_uart_data_s get_latest_nmea_data(nmea_t index);

@@ -58,6 +58,12 @@ void app_main(void) {
     printf("  Minutes: %f\n", nmea_uart_data->position.latitude.minutes);
     printf("  Cardinal: %c\n",
            (char)nmea_uart_data->position.latitude.cardinal);
+
+    char buf[100];
+    if (strftime(buf, sizeof(buf), "%H:%M:%S",
+                 (const struct tm *)&(nmea_uart_data->time))) {
+      printf("Time: %s\n", buf);
+    }
     free(nmea_uart_data);
     vTaskDelay(pdMS_TO_TICKS(10000));
   }
