@@ -1,22 +1,33 @@
-#include "spi_flash_mmap.h"
 #include "esp_system.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "i2c_hm3301.h"
+#include "nmea.h"
+#include "spi_flash_mmap.h"
+#include "uart_gps.h"
+#include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <sys/unistd.h>
 #include <unistd.h>
 
-#include "i2c_hm3301.h"
-#include "uart_gps.h"
+void *uart_gps_thread(void *args) {
 
+  for (;;)
+    gps_read_task();
+
+  return NULL;
+}
 
 void app_main(void) {
   uint8_t data_rd[HM3301_BIT_LEN];
   struct hm3301_pm ret;
+  // pthread_t uart_gps;
 
   init_i2c_hm3301();
   init_gps_uart();
+
+  // pthread_create(&uart_gps, NULL, uart_gps_thread, NULL);
 
   vTaskDelay(pdMS_TO_TICKS(5000));
 
@@ -34,8 +45,20 @@ void app_main(void) {
     printf("PM1.0=%u PM2.5=%u PM10=%u\n", ret.pm1_0, ret.pm2_5, ret.pm10);
 
     printf("===============================\n");
-    gps_read_task();
+    nmea_uart_data_s *nmea_uart_data = gps_read_task();
 
+    printf("NMEA Satelliti: %d\n", nmea_uart_data->n_satellites);
+    printf("Longitude:\n");
+    printf("  Degrees: %d\n", nmea_uart_data->position.longitude.degrees);
+    printf("  Minutes: %f\n", nmea_uart_data->position.longitude.minutes);
+    printf("  Cardinal: %c\n",
+           (char)nmea_uart_data->position.longitude.cardinal);
+    printf("Latitude:\n");
+    printf("  Degrees: %d\n", nmea_uart_data->position.latitude.degrees);
+    printf("  Minutes: %f\n", nmea_uart_data->position.latitude.minutes);
+    printf("  Cardinal: %c\n",
+           (char)nmea_uart_data->position.latitude.cardinal);
+    free(nmea_uart_data);
     vTaskDelay(pdMS_TO_TICKS(10000));
   }
 }
