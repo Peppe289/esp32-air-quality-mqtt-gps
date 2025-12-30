@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <sys/unistd.h>
 #include <unistd.h>
+#include "connection/conn_thread.h"
 
 #include "cJSON.h"
 
@@ -45,6 +46,7 @@ void app_main(void) {
 
   init_i2c_hm3301();
   init_gps_uart();
+  connection_listener_start();
 
   vTaskDelay(pdMS_TO_TICKS(5000));
 
