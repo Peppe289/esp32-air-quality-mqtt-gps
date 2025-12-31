@@ -51,7 +51,7 @@
 #define GPS_BAUD_RATE 9600
 #define LENGHT_BUFFER 200
 
-const uart_config_t uart_config = {
+static const uart_config_t uart_config = {
     .baud_rate = GPS_BAUD_RATE,
     .data_bits = UART_DATA_8_BITS,
     .parity = UART_PARITY_DISABLE,
@@ -117,8 +117,8 @@ static void gps_data(nmea_s *data, nmea_uart_data_s *nmea_uart_data) {
 
 #define endline(x) unlikely((x) == '\0' || (x) == '\n')
 
-static nmea_uart_data_s *gps_parse(const char *str,
-                                   nmea_uart_data_s *nmea_uart_data, int len) {
+static void gps_parse(const char *str, nmea_uart_data_s *nmea_uart_data,
+                      int len) {
   char *start = (char *)str;
   char cpy[100] = {0};
   size_t index = 0;
@@ -128,7 +128,7 @@ static nmea_uart_data_s *gps_parse(const char *str,
     start++;
 
   if (endline(*start))
-    return NULL; // Empty message
+    return; // Empty message
 
   while (len > 0) {
     index = 0;
@@ -162,7 +162,6 @@ last_row:
     LOGD("Get String: %s\n", cpy);
     gps_data(nmea_parse(cpy, strlen(cpy), 0), nmea_uart_data);
   }
-  return nmea_uart_data;
 }
 
 nmea_uart_data_s *gps_read_task() {

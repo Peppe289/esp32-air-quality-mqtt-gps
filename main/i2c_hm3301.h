@@ -35,6 +35,6 @@ typedef struct hm3301_pm {
 #endif
 
 void init_i2c_hm3301();
-struct hm3301_pm i2c_hm3301_read(uint8_t *raw_data);
+uint8_t i2c_hm3301_read(uint8_t *raw_data, struct hm3301_pm *hm3301);
 
 #endif
