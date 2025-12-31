@@ -22,6 +22,13 @@
 
 #define GATTS_TABLE_TAG "SEC_GATTS_DEMO"
 
+#undef ESP_LOGE
+#undef ESP_LOGD
+#undef ESP_LOGI
+#define ESP_LOGE(...)
+#define ESP_LOGD(...)
+#define ESP_LOGI(...)
+
 #define WIFI_BT_PROFILE_NUM 1
 #define WIFI_BT_PROFILE_APP_IDX 0
 #define ESP_WIFI_BT_APP_ID 0x55

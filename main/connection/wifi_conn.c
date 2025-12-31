@@ -32,6 +32,13 @@ static int s_retry_num = 0;
 static bool isConnecting = false;
 static esp_netif_t *netif;
 
+#undef ESP_LOGE
+#undef ESP_LOGD
+#undef ESP_LOGI
+#define ESP_LOGE(...)
+#define ESP_LOGD(...)
+#define ESP_LOGI(...)
+
 uint8_t isWiFiConnecting() { return isConnecting ? 1 : 0; }
 
 static void event_handler(void *arg, esp_event_base_t event_base,

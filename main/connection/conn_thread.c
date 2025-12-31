@@ -13,6 +13,9 @@
 #include "portmacro.h"
 #include "wifi_conn.h"
 
+#undef ESP_LOGI
+#define ESP_LOGI(...)
+
 void *manageConnection(void *args) {
   for (;;) {
     vTaskDelay(3000 / portTICK_PERIOD_MS);
