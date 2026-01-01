@@ -24,6 +24,7 @@ This repository is part of my **internship** project where I am working with an 
 - **HM3301**: It's necessary to enable `CONFIG_I2C_ENABLE_SLAVE_DRIVER_VERSION_2` in sdkconfig. If this option is disabled, the system will use the older drivers, which is not optimal.
 - **Wi-Fi Configuration via Bluetooth**: I implemented a feature where, when the device is not connected to any network via Wi-Fi, it automatically opens a Bluetooth connection (GATT BLE) for Wi-Fi configuration. The user can send Wi-Fi authentication data over Bluetooth, after which the Bluetooth connection is closed, and the system attempts to connect to the Wi-Fi network. If the connection fails or is lost, the system shuts down the Wi-Fi and reopens the Bluetooth for a new configuration attempt. This ensures that the device can be easily reconfigured without needing physical access or resetting it.
 - **Custom Partition for Larger Code**: To fit the larger codebase, including both Bluetooth and Wi-Fi drivers, I had to create a custom partition. Without this partition, the default partition layout was insufficient, and I wasn't able to fit both the Bluetooth and Wi-Fi drivers into the same firmware for flashing on the **ESP32-C3**. This solution allowed me to properly include all the necessary drivers and functionalities in the firmware. [Custom Partition here](partitions.csv).
+- **MQTT TLS**: As mentioned in the commit `40cb8e53eca16bbc95c8f2b4904da04efa7f6c74` server verification is skipped by default. In my case, this is standard.
 
 # MQTT Broker
 
