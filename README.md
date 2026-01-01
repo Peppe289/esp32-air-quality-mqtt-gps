@@ -106,6 +106,17 @@ At this point, the MQTT broker is fully configured and ready to accept client co
 On the client side, certificate validation can be disabled if required (for example in testing environments), while **TLS encryption remains enabled**.
 Clients authenticate using username and password.
 
+## MQTT Auth
+
+Create `private.txt` file:
+
+```CMake
+set(ENV{MQTT_BROKER}   "address")
+set(ENV{MQTT_PORT}     "port")
+set(ENV{MQTT_USERNAME} "username")
+set(ENV{MQTT_PASSWORD} "passwd")
+```
+
 # Plane to do:
 
 - [ ] MQTT server for push data.

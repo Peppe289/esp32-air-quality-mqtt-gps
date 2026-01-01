@@ -4,3 +4,6 @@ sdkconfig.old
 .vscode/
 managed_components/
 dependencies.lock
+
+# MQTT Auth
+private.txt
