@@ -10,12 +10,6 @@
 #### GPS Functionality:
 To convert RAW GPS data into a readable format, use the `igrr/libnmea` component.
 
-# Work Stuff 
-
-- Synchronization type from: [Synchronization Techniques in Real-Time Operating Systems Implementation and Evaluation on Arduino with FreeRTOS](https://www.researchgate.net/publication/379063740_Synchronization_Techniques_in_Real-Time_Operating_Systems_Implementation_and_Evaluation_on_Arduino_with_FreeRTOS)
-- Why C? from: [Performance Evaluation of C/C++, MicroPython, Rust and TinyGo Programming Languages on ESP32 Microcontroller](https://www.mdpi.com/2036322)
-- Why LittleFS? from docs: [file system considerations](https://docs.espressif.com/projects/esp-idf/en/stable/esp32c3/api-guides/file-system-considerations.html). (SPIFFS is (g)old; I don't need FatFS; I(the docs) like LittleFS).
-
 # Logbook:
 
 This repository is part of my **internship** project where I am working with an **ESP32** and various sensors like the **GPS** and **PM2.5 sensor (HM3301)**. The purpose of this project is to implement a real-time system for data collection and processing from multiple devices. Below are some key learnings and challenges I have encountered so far:
