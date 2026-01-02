@@ -1,33 +1,16 @@
+#include "ble_gatts.h"
 #include "esp_bt.h"
-#include "esp_log.h"
-#include "esp_system.h"
-#include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "freertos/task.h"
-#include "nvs_flash.h"
 #include <inttypes.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include "ble_gatts.h"
-
 
 #include "esp_bt_defs.h"
-#include "esp_bt_device.h"
 #include "esp_bt_main.h"
 #include "esp_gap_ble_api.h"
 #include "esp_gatts_api.h"
-
-#include "wifi_conn.h"
-
-#define GATTS_TABLE_TAG "SEC_GATTS_DEMO"
-
-#undef ESP_LOGE
-#undef ESP_LOGD
-#undef ESP_LOGI
-#define ESP_LOGE(...)
-#define ESP_LOGD(...)
-#define ESP_LOGI(...)
 
 #define WIFI_BT_PROFILE_NUM 1
 #define WIFI_BT_PROFILE_APP_IDX 0
@@ -165,40 +148,31 @@ static const esp_gatts_attr_db_t heart_rate_gatt_db[WIFI_BT_NB] = {
 
 static void show_bonded_devices(void) {
   int dev_num = esp_ble_get_bond_device_num();
-  if (dev_num == 0) {
-    ESP_LOGI(GATTS_TABLE_TAG, "Bonded devices number zero\n");
+  if (dev_num == 0)
     return;
-  }
 
   esp_ble_bond_dev_t *dev_list =
       (esp_ble_bond_dev_t *)malloc(sizeof(esp_ble_bond_dev_t) * dev_num);
-  if (!dev_list) {
-    ESP_LOGI(GATTS_TABLE_TAG, "malloc failed, return\n");
+  if (!dev_list)
     return;
-  }
+
   esp_ble_get_bond_device_list(&dev_num, dev_list);
-  ESP_LOGI(GATTS_TABLE_TAG, "Bonded devices number %d", dev_num);
-  for (int i = 0; i < dev_num; i++) {
-    ESP_LOGI(GATTS_TABLE_TAG, "[%u] addr_type %u, addr " ESP_BD_ADDR_STR "", i,
-             dev_list[i].bd_addr_type, ESP_BD_ADDR_HEX(dev_list[i].bd_addr));
-  }
 
   free(dev_list);
 }
 
 static void remove_all_bonded_devices(void) {
   int dev_num = esp_ble_get_bond_device_num();
-  if (dev_num == 0) {
-    ESP_LOGI(GATTS_TABLE_TAG, "Bonded devices number zero\n");
+
+  if (dev_num == 0)
     return;
-  }
 
   esp_ble_bond_dev_t *dev_list =
       (esp_ble_bond_dev_t *)malloc(sizeof(esp_ble_bond_dev_t) * dev_num);
-  if (!dev_list) {
-    ESP_LOGI(GATTS_TABLE_TAG, "malloc failed, return\n");
+
+  if (!dev_list)
     return;
-  }
+
   esp_ble_get_bond_device_list(&dev_num, dev_list);
   for (int i = 0; i < dev_num; i++) {
     esp_ble_remove_bond_device(dev_list[i].bd_addr);
@@ -216,7 +190,6 @@ void disable_bt() {
   ESP_ERROR_CHECK(esp_bluedroid_deinit());
   ESP_ERROR_CHECK(esp_bt_controller_disable());
   ESP_ERROR_CHECK(esp_bt_controller_deinit());
-  ESP_LOGI("DEBUG BT", "Bluetooth disabled and deinitialized.");
 }
 
 static void gap_event_handler(esp_gap_ble_cb_event_t event,
@@ -235,23 +208,14 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event,
     }
     break;
   case ESP_GAP_BLE_ADV_START_COMPLETE_EVT:
-    if (param->adv_start_cmpl.status != ESP_BT_STATUS_SUCCESS) {
-      ESP_LOGE(GATTS_TABLE_TAG, "Advertising start failed, status %x",
-               param->adv_start_cmpl.status);
-      break;
-    }
-    ESP_LOGI(GATTS_TABLE_TAG, "Advertising start successfully");
     break;
   case ESP_GAP_BLE_OOB_REQ_EVT: {
-    ESP_LOGI(GATTS_TABLE_TAG, "OOB request");
     uint8_t tk[16] = {1};
     esp_ble_oob_req_reply(param->ble_security.ble_req.bd_addr, tk, sizeof(tk));
     break;
   }
   case ESP_GAP_BLE_NC_REQ_EVT:
     esp_ble_confirm_reply(param->ble_security.ble_req.bd_addr, true);
-    ESP_LOGI(GATTS_TABLE_TAG, "Numeric Comparison request, passkey %" PRIu32,
-             param->ble_security.key_notif.passkey);
     break;
   case ESP_GAP_BLE_SEC_REQ_EVT:
     esp_ble_gap_security_rsp(param->ble_security.ble_req.bd_addr, true);
@@ -260,44 +224,23 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event,
     esp_bd_addr_t bd_addr;
     memcpy(bd_addr, param->ble_security.auth_cmpl.bd_addr,
            sizeof(esp_bd_addr_t));
-    ESP_LOGI(GATTS_TABLE_TAG,
-             "Authentication complete, addr_type %u, addr " ESP_BD_ADDR_STR "",
-             param->ble_security.auth_cmpl.addr_type, ESP_BD_ADDR_HEX(bd_addr));
-    if (!param->ble_security.auth_cmpl.success) {
-      ESP_LOGI(GATTS_TABLE_TAG, "Pairing failed, reason 0x%x",
-               param->ble_security.auth_cmpl.fail_reason);
-    }
     show_bonded_devices();
     break;
   }
-  case ESP_GAP_BLE_REMOVE_BOND_DEV_COMPLETE_EVT: {
-    ESP_LOGD(GATTS_TABLE_TAG,
-             "Bond device remove, status %d, device " ESP_BD_ADDR_STR "",
-             param->remove_bond_dev_cmpl.status,
-             ESP_BD_ADDR_HEX(param->remove_bond_dev_cmpl.bd_addr));
+  case ESP_GAP_BLE_REMOVE_BOND_DEV_COMPLETE_EVT:
     break;
-  }
   case ESP_GAP_BLE_SET_LOCAL_PRIVACY_COMPLETE_EVT:
-    if (param->local_privacy_cmpl.status != ESP_BT_STATUS_SUCCESS) {
-      ESP_LOGE(GATTS_TABLE_TAG, "Local privacy config failed, status %x",
-               param->local_privacy_cmpl.status);
+    if (param->local_privacy_cmpl.status != ESP_BT_STATUS_SUCCESS)
       break;
-    }
-    ESP_LOGI(GATTS_TABLE_TAG, "Local privacy config successfully");
 
     esp_err_t ret = esp_ble_gap_config_adv_data(&wifi_bt_adv_config);
-    if (ret) {
-      ESP_LOGE(GATTS_TABLE_TAG, "config adv data failed, error code = %x", ret);
-    } else {
+
+    if (!ret)
       adv_config_done |= ADV_CONFIG_FLAG;
-    }
 
     ret = esp_ble_gap_config_adv_data(&wifi_bt_scan_rsp_config);
-    if (ret) {
-      ESP_LOGE(GATTS_TABLE_TAG, "config adv data failed, error code = %x", ret);
-    } else {
+    if (!ret)
       adv_config_done |= SCAN_RSP_CONFIG_FLAG;
-    }
 
     break;
   default:
@@ -308,12 +251,8 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event,
 static void gatts_profile_event_handler(esp_gatts_cb_event_t event,
                                         esp_gatt_if_t gatts_if,
                                         esp_ble_gatts_cb_param_t *param) {
-  ESP_LOGV(GATTS_TABLE_TAG, "event = %x", event);
   switch (event) {
   case ESP_GATTS_REG_EVT:
-    ESP_LOGI(GATTS_TABLE_TAG,
-             "GATT server register, status %d, app_id %d, gatts_if %d",
-             param->reg.status, param->reg.app_id, gatts_if);
     esp_ble_gap_set_device_name(bt_device_name);
     esp_ble_gap_config_local_privacy(true);
     esp_ble_gatts_create_attr_tab(heart_rate_gatt_db, gatts_if, WIFI_BT_NB,
@@ -322,9 +261,6 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event,
   case ESP_GATTS_READ_EVT:
     break;
   case ESP_GATTS_WRITE_EVT:
-    ESP_LOGI(GATTS_TABLE_TAG, "Characteristic write, value ");
-    ESP_LOG_BUFFER_HEX(GATTS_TABLE_TAG, param->write.value, param->write.len);
-
     if (param->write.handle == wifi_bt_handle_table[WIFI_BT_UUID_MEAS_VAL]) {
       sprintf(ssid, "%.*s", param->write.len, param->write.value);
     } else if (param->write.handle ==
@@ -333,27 +269,17 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event,
     }
     break;
   case ESP_GATTS_CONNECT_EVT:
-    ESP_LOGI(
-        GATTS_TABLE_TAG, "Connected, conn_id %u, remote " ESP_BD_ADDR_STR "",
-        param->connect.conn_id, ESP_BD_ADDR_HEX(param->connect.remote_bda));
     /* start security connect with peer device when receive the connect event
      * sent by the master */
     esp_ble_set_encryption(param->connect.remote_bda, ESP_BLE_SEC_ENCRYPT_MITM);
     break;
   case ESP_GATTS_DISCONNECT_EVT:
-    ESP_LOGI(GATTS_TABLE_TAG,
-             "Disconnected, remote " ESP_BD_ADDR_STR ", reason 0x%x",
-             ESP_BD_ADDR_HEX(param->disconnect.remote_bda),
-             param->disconnect.reason);
     /* start advertising again when missing the connect */
     esp_ble_gap_start_advertising(&wifi_bt_adv_params);
     break;
   case ESP_GATTS_CREAT_ATTR_TAB_EVT: {
     if (param->create.status == ESP_GATT_OK) {
       if (param->add_attr_tab.num_handle == WIFI_BT_NB) {
-        ESP_LOGI(GATTS_TABLE_TAG,
-                 "Attribute table create successfully, num_handle %x",
-                 param->add_attr_tab.num_handle);
         memcpy(wifi_bt_handle_table, param->add_attr_tab.handles,
                sizeof(wifi_bt_handle_table));
         esp_ble_gatts_start_service(wifi_bt_handle_table[WIFI_BT_SVC]);
@@ -373,11 +299,8 @@ static void gatts_event_handler(esp_gatts_cb_event_t event,
   if (event == ESP_GATTS_REG_EVT) {
     if (param->reg.status == ESP_GATT_OK) {
       wifi_bt_profile_tab[WIFI_BT_PROFILE_APP_IDX].gatts_if = gatts_if;
-    } else {
-      ESP_LOGI(GATTS_TABLE_TAG, "Reg app failed, app_id %04x, status %d",
-               param->reg.app_id, param->reg.status);
+    } else
       return;
-    }
   }
 
   do {
@@ -403,58 +326,36 @@ void start_bt() {
   if (bt_status == ESP_BT_CONTROLLER_STATUS_IDLE) {
     esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
     ret = esp_bt_controller_init(&bt_cfg);
-    if (ret) {
-      ESP_LOGE(GATTS_TABLE_TAG, "%s init controller failed: %s", __func__,
-               esp_err_to_name(ret));
+    if (ret)
       return;
-    }
+
     ret = esp_bt_controller_enable(ESP_BT_MODE_BLE);
-    if (ret) {
-      ESP_LOGE(GATTS_TABLE_TAG, "%s enable controller failed: %s", __func__,
-               esp_err_to_name(ret));
+    if (ret)
       return;
-    }
-  } else {
-    ESP_LOGI(GATTS_TABLE_TAG, "Bluetooth controller is already initialized, "
-                              "skipping initialization.");
   }
 
   esp_bluedroid_status_t bt_bluedroid_status = esp_bluedroid_get_status();
   if (bt_bluedroid_status != ESP_BLUEDROID_STATUS_ENABLED) {
     ret = esp_bluedroid_init();
-    if (ret) {
-      ESP_LOGE(GATTS_TABLE_TAG, "%s init bluetooth failed: %s", __func__,
-               esp_err_to_name(ret));
+    if (ret)
       return;
-    }
-    ret = esp_bluedroid_enable();
-    if (ret) {
-      ESP_LOGE(GATTS_TABLE_TAG, "%s enable bluetooth failed: %s", __func__,
-               esp_err_to_name(ret));
-      return;
-    }
-  } else {
-    ESP_LOGI(GATTS_TABLE_TAG,
-             "Bluedroid is already initialized, skipping initialization.");
-  }
 
-  ESP_LOGI(GATTS_TABLE_TAG, "%s init bluetooth", __func__);
+    ret = esp_bluedroid_enable();
+    if (ret)
+      return;
+  }
 
   ret = esp_ble_gatts_register_callback(gatts_event_handler);
-  if (ret) {
-    ESP_LOGE(GATTS_TABLE_TAG, "gatts register error, error code = %x", ret);
+  if (ret)
     return;
-  }
+
   ret = esp_ble_gap_register_callback(gap_event_handler);
-  if (ret) {
-    ESP_LOGE(GATTS_TABLE_TAG, "gap register error, error code = %x", ret);
+  if (ret)
     return;
-  }
+
   ret = esp_ble_gatts_app_register(ESP_WIFI_BT_APP_ID);
-  if (ret) {
-    ESP_LOGE(GATTS_TABLE_TAG, "gatts app register error, error code = %x", ret);
+  if (ret)
     return;
-  }
 
   isEnabled = true;
 
