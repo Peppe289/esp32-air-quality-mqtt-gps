@@ -22,9 +22,13 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
-set(CMAKE_CXX_FLAGS "-Wall -Wextra")
-set(CMAKE_CXX_FLAGS_DEBUG "-g")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+set(COMMON_FLAGS "-Wall -Wextra -Wdouble-promotion -Werror=format-security -Wno-unused-parameter")
+
+set(CMAKE_C_FLAGS_DEBUG "-g -Og")
+set(CMAKE_CXX_FLAGS_DEBUG "-g -Og")
+
+set(CMAKE_C_FLAGS_RELEASE "-Os")
+set(CMAKE_CXX_FLAGS_RELEASE "-Os")
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(esp32_project)
