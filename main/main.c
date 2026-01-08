@@ -12,6 +12,10 @@
 #include <sys/unistd.h>
 #include <unistd.h>
 
+#include "esp_log.h"
+
+static const char *TAG = "MAIN";
+
 #include "cJSON.h"
 #include "connection/mqtt/conn_mqtt_client.h"
 
@@ -60,6 +64,7 @@ void app_main(void) {
   uint8_t data_rd[HM3301_BIT_LEN];
   struct hm3301_pm *hm3301 = NULL;
   nmea_uart_data_s *nmea_gps = NULL;
+  char *json_string;
 
   init_i2c_hm3301();
   init_gps_uart();
@@ -69,44 +74,20 @@ void app_main(void) {
 
   for (;;) {
     hm3301 = malloc(sizeof(struct hm3301_pm));
+
     if (i2c_hm3301_read(data_rd, hm3301)) {
-      printf("Errore nella lettura\n");
+      ESP_LOGE(TAG, "HM3301: Error reading\n");
+      continue;
     }
 
     if (!HM3301_HEADER_INTEGRITY(data_rd)) {
-      printf("Frame desincronizzato\n");
+      ESP_LOGD(TAG, "HM3301: Frame out of sync\n");
+      continue;
     }
 
-    for (int i = 0; i < HM3301_BIT_LEN; i++) {
-      printf("%02X ", data_rd[i]);
-    }
-    printf("\n");
-    if (hm3301) {
-      printf("PM1.0=%u PM2.5=%u PM10=%u\n", hm3301->pm1_0, hm3301->pm2_5,
-             hm3301->pm10);
-    }
-    printf("===============================\n");
     nmea_gps = gps_read_task();
 
-    if (nmea_gps) {
-      printf("NMEA Satelliti: %d\n", nmea_gps->n_satellites);
-      printf("Longitude:\n");
-      printf("  Degrees: %d\n", nmea_gps->position.longitude.degrees);
-      printf("  Minutes: %f\n", nmea_gps->position.longitude.minutes);
-      printf("  Cardinal: %c\n", (char)nmea_gps->position.longitude.cardinal);
-      printf("Latitude:\n");
-      printf("  Degrees: %d\n", nmea_gps->position.latitude.degrees);
-      printf("  Minutes: %f\n", nmea_gps->position.latitude.minutes);
-      printf("  Cardinal: %c\n", (char)nmea_gps->position.latitude.cardinal);
-
-      char buf[100];
-      if (strftime(buf, sizeof(buf), "%H:%M:%S",
-                   (const struct tm *)&(nmea_gps->time))) {
-        printf("Time: %s\n", buf);
-      }
-    }
-
-    char *json_string = getString(nmea_gps, hm3301);
+    json_string = getString(nmea_gps, hm3301);
 
     if (hm3301) {
       free(hm3301);
@@ -118,9 +99,10 @@ void app_main(void) {
       nmea_gps = NULL;
     }
 
-    printf("JSON: %s\n", json_string);
+    ESP_LOGI(TAG, "JSON\n: %s\n", json_string);
     publish((const char *)json_string);
     free(json_string);
+    json_string = NULL;
 
     vTaskDelay(pdMS_TO_TICKS(10000));
   }
