@@ -30,7 +30,7 @@ static EventGroupHandle_t s_wifi_event_group;
 
 static int s_retry_num = 0;
 static bool isConnecting = false;
-static esp_netif_t *netif;
+static esp_netif_t *netif = NULL;
 
 uint8_t isWiFiConnecting() { return isConnecting ? 1 : 0; }
 
@@ -60,18 +60,27 @@ static void event_handler(void *arg, esp_event_base_t event_base,
 
 void disableWIFI() {
   isConnecting = false;
-  esp_netif_destroy_default_wifi(netif);
   esp_wifi_stop();
   esp_wifi_deinit();
+  if (netif) {
+    esp_netif_destroy_default_wifi(netif);
+    netif = NULL;
+  }
 }
 
+static uint8_t s_logic_initialized = 0;
+
 void wifi_init_sta(char *_ssid, char *passwd) {
-  s_wifi_event_group = xEventGroupCreate();
+  if (!s_logic_initialized) {
+    ESP_ERROR_CHECK(esp_netif_init());
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
+    s_logic_initialized = true;
+    s_wifi_event_group = xEventGroupCreate();
+  }
 
-  ESP_ERROR_CHECK(esp_netif_init());
-
-  ESP_ERROR_CHECK(esp_event_loop_create_default());
-  netif = esp_netif_create_default_wifi_sta();
+  if (netif == NULL) {
+    netif = esp_netif_create_default_wifi_sta();
+  }
 
   wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
   ESP_ERROR_CHECK(esp_wifi_init(&cfg));
@@ -93,7 +102,8 @@ void wifi_init_sta(char *_ssid, char *passwd) {
           },
   };
 
-  strncpy((char *)wifi_config.sta.ssid, _ssid, sizeof(wifi_config.sta.ssid) - 1);
+  strncpy((char *)wifi_config.sta.ssid, _ssid,
+          sizeof(wifi_config.sta.ssid) - 1);
   wifi_config.sta.ssid[sizeof(wifi_config.sta.ssid) - 1] = '\0';
   strncpy((char *)wifi_config.sta.password, passwd,
           sizeof(wifi_config.sta.password) - 1);
