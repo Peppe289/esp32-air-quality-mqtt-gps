@@ -184,12 +184,14 @@ static void remove_all_bonded_devices(void) {
 uint8_t isBTEnabled() { return isEnabled ? 1 : 0; }
 
 void disable_bt() {
-  isEnabled = false;
-  remove_all_bonded_devices();
-  ESP_ERROR_CHECK(esp_bluedroid_disable());
-  ESP_ERROR_CHECK(esp_bluedroid_deinit());
-  ESP_ERROR_CHECK(esp_bt_controller_disable());
-  ESP_ERROR_CHECK(esp_bt_controller_deinit());
+  if (isEnabled) {
+    isEnabled = false;
+    remove_all_bonded_devices();
+    ESP_ERROR_CHECK(esp_bluedroid_disable());
+    ESP_ERROR_CHECK(esp_bluedroid_deinit());
+    ESP_ERROR_CHECK(esp_bt_controller_disable());
+    ESP_ERROR_CHECK(esp_bt_controller_deinit());
+  }
 }
 
 static void gap_event_handler(esp_gap_ble_cb_event_t event,
