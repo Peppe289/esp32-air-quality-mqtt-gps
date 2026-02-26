@@ -14,10 +14,6 @@ typedef struct hm3301_pm {
 // Standard HM3301 device address
 #define HM3301_DEV_ADDR 0x40
 #define HM3301_READ_CMD 0x88
-// From https://wiki.seeedstudio.com/Grove-Laser_PM2.5_Sensor-HM3301/
-// This module use 0x00 0xFF and not standard 0x42 0x4D like other PMS.
-#define HM3301_HEADER_INTEGRITY(slave_data)                                    \
-  (slave_data[0] == 0x00 && slave_data[1] == 0xFF)
 #define HM3301_SDA_IO_NUM 6 // This is my SDA PIN
 #define HM3301_SCL_IO_NUM 7 // This is my SCL PIN
 

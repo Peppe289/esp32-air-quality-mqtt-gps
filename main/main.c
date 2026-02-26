@@ -82,13 +82,10 @@ void app_main(void) {
   for (;;) {
     hm3301 = malloc(sizeof(struct hm3301_pm));
 
-    if (i2c_hm3301_read(data_rd, hm3301)) {
-      ESP_LOGE(TAG, "HM3301: Error reading\n");
-      continue;
-    }
+    vTaskDelay(pdMS_TO_TICKS(10000));
 
-    if (!HM3301_HEADER_INTEGRITY(data_rd)) {
-      ESP_LOGD(TAG, "HM3301: Frame out of sync\n");
+    if (i2c_hm3301_read(data_rd, hm3301)) {
+      ESP_LOGE(TAG, "Error reading HM3301. Continue...\n");
       continue;
     }
 
@@ -112,7 +109,5 @@ void app_main(void) {
       free(json_string);
       json_string = NULL;
     }
-
-    vTaskDelay(pdMS_TO_TICKS(10000));
   }
 }
