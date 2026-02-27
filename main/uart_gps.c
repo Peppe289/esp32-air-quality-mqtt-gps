@@ -122,15 +122,13 @@ static void gps_parse(const char *str, nmea_uart_data_s *nmea_uart_data,
   }
 }
 
-nmea_uart_data_s *gps_read_task() {
+uint8_t gps_read_task(nmea_uart_data_s *nmea_uart_data) {
   uint8_t data[LENGHT_BUFFER];
-  nmea_uart_data_s *nmea_uart_data;
   time_t start = time(NULL);
 
-  nmea_uart_data = malloc(sizeof(nmea_uart_data_s));
   if (nmea_uart_data == NULL) {
     ESP_LOGE(TAG, "Memory allocation failed");
-    return NULL;
+    return 1;
   }
   memset(nmea_uart_data, 0, sizeof(nmea_uart_data_s));
   for (;;) {
@@ -146,16 +144,15 @@ nmea_uart_data_s *gps_read_task() {
            nmea_uart_data->position.longitude.minutes != 0 ||
            nmea_uart_data->position.latitude.cardinal != 0 ||
            nmea_uart_data->position.longitude.cardinal != 0)) {
-        return nmea_uart_data;
+        return 0;
       } else {
         ESP_LOGI(TAG, "Data Not Valid... Try Again");
         if (difftime(time(NULL), start) > 5) {
           ESP_LOGE(TAG, "GPS Time out!");
-          free(nmea_uart_data);
-          return NULL;
+          break;
         }
       }
     }
   }
-  return NULL;
+  return 1;
 }

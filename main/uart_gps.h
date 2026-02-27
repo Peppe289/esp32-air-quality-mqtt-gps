@@ -23,6 +23,6 @@ typedef struct {
 
 //nmea_uart_data_s get_latest_nmea_data(nmea_t index);
 void init_gps_uart(void);
-nmea_uart_data_s *gps_read_task();
+uint8_t gps_read_task(nmea_uart_data_s *);
 
 #endif

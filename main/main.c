@@ -70,8 +70,8 @@ static char *getString(nmea_uart_data_s *gps_data, struct hm3301_pm *hm3301) {
 
 void app_main(void) {
   uint8_t data_rd[HM3301_BIT_LEN];
-  struct hm3301_pm *hm3301 = NULL;
-  nmea_uart_data_s *nmea_gps = NULL;
+  struct hm3301_pm hm3301 = {0};
+  nmea_uart_data_s nmea_gps = {0};
   char *json_string;
 
   init_i2c_hm3301();
@@ -81,28 +81,19 @@ void app_main(void) {
   vTaskDelay(pdMS_TO_TICKS(1000));
 
   for (;;) {
-    hm3301 = malloc(sizeof(struct hm3301_pm));
-
     vTaskDelay(pdMS_TO_TICKS(10000));
 
-    if (i2c_hm3301_read(data_rd, hm3301)) {
+    if (i2c_hm3301_read(data_rd, &hm3301)) {
       ESP_LOGE(TAG, "Error reading HM3301. Continue...\n");
       continue;
     }
 
-    nmea_gps = gps_read_task();
-
-    json_string = getString(nmea_gps, hm3301);
-
-    if (hm3301) {
-      free(hm3301);
-      hm3301 = NULL;
+    if (gps_read_task(&nmea_gps)) {
+      ESP_LOGE(TAG, "Error reading GPS. Continue...");
+      continue;
     }
 
-    if (nmea_gps) {
-      free(nmea_gps);
-      nmea_gps = NULL;
-    }
+    json_string = getString(&nmea_gps, &hm3301);
 
     if (json_string) {
       char buff[200] = {0};
