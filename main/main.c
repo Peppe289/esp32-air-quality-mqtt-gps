@@ -1,4 +1,5 @@
 #include "connection/conn_thread.h"
+#include "driver/gpio.h"
 #include "esp_system.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -19,6 +20,10 @@ static const char *TAG = "MAIN";
 
 #include "cJSON.h"
 #include "connection/mqtt/conn_mqtt_client.h"
+
+/* LED configuration */
+#define LED_GREEN_GPIO 3
+#define LED_RED_GPIO 4
 
 static char *getString(nmea_uart_data_s *gps_data, struct hm3301_pm *hm3301) {
   cJSON *root;
@@ -68,12 +73,28 @@ static char *getString(nmea_uart_data_s *gps_data, struct hm3301_pm *hm3301) {
   return string;
 }
 
+static void led_init(void) {
+  // Initialize Green LED (GPIO2) - OFF initially
+  gpio_reset_pin(LED_GREEN_GPIO);
+  gpio_set_direction(LED_GREEN_GPIO, GPIO_MODE_OUTPUT);
+  gpio_set_level(LED_GREEN_GPIO, 0); // Turn off green LED at startup
+
+  // Initialize Red LED (GPIO4) - ON at power on
+  gpio_reset_pin(LED_RED_GPIO);
+  gpio_set_direction(LED_RED_GPIO, GPIO_MODE_OUTPUT);
+  gpio_set_level(LED_RED_GPIO, 1); // Turn on red LED at startup
+
+  ESP_LOGI(TAG, "LEDs initialized: Green=GPIO%d (OFF), Red=GPIO%d (ON)",
+           LED_GREEN_GPIO, LED_RED_GPIO);
+}
+
 void app_main(void) {
   uint8_t data_rd[HM3301_BIT_LEN];
   struct hm3301_pm hm3301 = {0};
   nmea_uart_data_s nmea_gps = {0};
   char *json_string;
 
+  led_init();
   init_i2c_hm3301();
   init_gps_uart();
   connection_listener_start();
