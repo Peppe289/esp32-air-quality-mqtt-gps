@@ -122,6 +122,14 @@ static void gps_parse(const char *str, nmea_uart_data_s *nmea_uart_data,
   }
 }
 
+static inline uint8_t is_gps_data_valid(const nmea_uart_data_s *data) {
+  if (data->n_satellites == 0)
+    return 0;
+
+  return (data->position.latitude.degrees != 0 ||
+          data->position.longitude.degrees != 0);
+}
+
 uint8_t gps_read_task(nmea_uart_data_s *nmea_uart_data) {
   uint8_t data[LENGHT_BUFFER];
   time_t start = time(NULL);
@@ -137,22 +145,18 @@ uint8_t gps_read_task(nmea_uart_data_s *nmea_uart_data) {
     if (len > 0) {
       data[len] = '\0';
       gps_parse((char *)data, nmea_uart_data, len);
-      if (nmea_uart_data->n_satellites > 0 &&
-          (nmea_uart_data->position.latitude.degrees != 0 ||
-           nmea_uart_data->position.longitude.degrees != 0 ||
-           nmea_uart_data->position.latitude.minutes != 0 ||
-           nmea_uart_data->position.longitude.minutes != 0 ||
-           nmea_uart_data->position.latitude.cardinal != 0 ||
-           nmea_uart_data->position.longitude.cardinal != 0)) {
-        return 0;
-      } else {
+
+      if (!is_gps_data_valid(nmea_uart_data)) {
         ESP_LOGI(TAG, "Data Not Valid... Try Again");
         if (difftime(time(NULL), start) > 5) {
           ESP_LOGE(TAG, "GPS Time out!");
           break;
         }
+      } else {
+        return 0;
       }
     }
   }
+
   return 1;
 }
