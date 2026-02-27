@@ -1,5 +1,6 @@
 #include "driver/uart.h"
 #include "esp_compiler.h"
+#include "esp_log.h"
 #include "freertos/task.h"
 #include <stddef.h>
 #include <stdint.h>
@@ -19,37 +20,13 @@
 
 #include "uart_gps.h"
 
-#define _LOG "UART: "
-
-// #define _UART_DEBUG
-
-#ifdef _UART_DEBUG
-#define LOGE(...)                                                              \
-  {                                                                            \
-    fprintf(stderr, _LOG "%s: ", __func__);                                    \
-    fprintf(stderr, _LOG __VA_ARGS__);                                         \
-  }
-#define LOGI(...)                                                              \
-  {                                                                            \
-    fprintf(stdout, _LOG "%s: ", __func__);                                    \
-    fprintf(stdout, _LOG __VA_ARGS__);                                         \
-  }
-#define LOGD(...)                                                              \
-  {                                                                            \
-    fprintf(stdout, _LOG "%s: ", __func__);                                    \
-    fprintf(stdout, _LOG __VA_ARGS__);                                         \
-  }
-#else
-#define LOGE(...)
-#define LOGI(...)
-#define LOGD(...)
-#endif
-
 #define GPS_TXD 21
 #define GPS_RXD 20
 #define GPS_UART_PORT UART_NUM_1
 #define GPS_BAUD_RATE 9600
 #define LENGHT_BUFFER 200
+
+static const char *TAG = "GPS";
 
 static const uart_config_t uart_config = {
     .baud_rate = GPS_BAUD_RATE,
@@ -70,44 +47,34 @@ void init_gps_uart(void) {
 static void gps_data(nmea_s *data, nmea_uart_data_s *nmea_uart_data) {
   if (NULL != data) {
     if (0 < data->errors) {
-      LOGD("Invalid String\n");
+      ESP_LOGW(TAG, "Invalid String");
       return;
     }
 
-    LOGD("DATA Type: %d\n", data->type);
+    ESP_LOGD(TAG, "DATA Type: %d", data->type);
 
     if (NMEA_GPGGA == data->type) {
       nmea_uart_data->n_satellites = ((nmea_gpgga_s *)data)->n_satellites;
-      LOGD("Satellites: %d\n", ((nmea_gpgga_s *)data)->n_satellites);
+      ESP_LOGI(TAG, "Satellites: %d", ((nmea_gpgga_s *)data)->n_satellites);
 
-      // Estrai la latitudine
-      nmea_uart_data->position.latitude.degrees =
-          ((nmea_gpgga_s *)data)->latitude.degrees;
-      nmea_uart_data->position.latitude.minutes =
-          ((nmea_gpgga_s *)data)->latitude.minutes;
-      nmea_uart_data->position.latitude.cardinal =
-          ((nmea_gpgga_s *)data)->latitude.cardinal;
-      LOGD("Latitude: %d° %f' %c\n", nmea_uart_data->position.latitude.degrees,
-           nmea_uart_data->position.latitude.minutes,
-           (char)nmea_uart_data->position.latitude.cardinal);
+      memcpy(&nmea_uart_data->position, &((nmea_gpgga_s *)data)->longitude,
+             sizeof(nmea_position) * 2);
 
-      // Estrai la longitudine
-      nmea_uart_data->position.longitude.degrees =
-          ((nmea_gpgga_s *)data)->longitude.degrees;
-      nmea_uart_data->position.longitude.minutes =
-          ((nmea_gpgga_s *)data)->longitude.minutes;
-      nmea_uart_data->position.longitude.cardinal =
-          ((nmea_gpgga_s *)data)->longitude.cardinal;
-      LOGD("Longitude: %d° %f' %c\n",
-           nmea_uart_data->position.longitude.degrees,
-           nmea_uart_data->position.longitude.minutes,
-           (char)nmea_uart_data->position.longitude.cardinal);
+      ESP_LOGI(TAG, "Latitude: %d° %f' %c",
+               nmea_uart_data->position.latitude.degrees,
+               nmea_uart_data->position.latitude.minutes,
+               (char)nmea_uart_data->position.latitude.cardinal);
+
+      ESP_LOGI(TAG, "Longitude: %d° %f' %c",
+               nmea_uart_data->position.longitude.degrees,
+               nmea_uart_data->position.longitude.minutes,
+               (char)nmea_uart_data->position.longitude.cardinal);
 
       nmea_uart_data->time = ((nmea_gpgga_s *)data)->time;
       char buf[100];
       if (strftime(buf, sizeof(buf), "%H:%M:%S",
                    (const struct tm *)&(((nmea_gpgga_s *)data)->time))) {
-        LOGD("Time: %s\n", buf);
+        ESP_LOGI(TAG, "Time: %s", buf);
       }
     }
 
@@ -138,9 +105,6 @@ static void gps_parse(const char *str, nmea_uart_data_s *nmea_uart_data,
         start++;
         len--;
         cpy[index] = '\n';
-
-        if (start == NULL || endline(*start))
-          goto last_row;
         break;
       }
       cpy[index++] = *start;
@@ -152,14 +116,8 @@ static void gps_parse(const char *str, nmea_uart_data_s *nmea_uart_data,
     if (unlikely(index >= sizeof(cpy) - 1 || cpy[0] != '$'))
       continue;
 
-    LOGD("Get String: %s\n", cpy);
+    ESP_LOGD(TAG, "Get String:\n%s", cpy);
 
-    gps_data(nmea_parse(cpy, strlen(cpy), 0), nmea_uart_data);
-  }
-
-last_row:
-  if (start != NULL) {
-    LOGD("Get String: %s\n", cpy);
     gps_data(nmea_parse(cpy, strlen(cpy), 0), nmea_uart_data);
   }
 }
@@ -171,7 +129,7 @@ nmea_uart_data_s *gps_read_task() {
 
   nmea_uart_data = malloc(sizeof(nmea_uart_data_s));
   if (nmea_uart_data == NULL) {
-    LOGE("Memory allocation failed\n");
+    ESP_LOGE(TAG, "Memory allocation failed");
     return NULL;
   }
   memset(nmea_uart_data, 0, sizeof(nmea_uart_data_s));
@@ -179,7 +137,6 @@ nmea_uart_data_s *gps_read_task() {
     int len = uart_read_bytes(GPS_UART_PORT, data, LENGHT_BUFFER - 1,
                               20 / portTICK_PERIOD_MS);
     if (len > 0) {
-      LOGI("\n\n\n%s\n\n\n\n", (char *)data);
       data[len] = '\0';
       gps_parse((char *)data, nmea_uart_data, len);
       if (nmea_uart_data->n_satellites > 0 &&
@@ -191,9 +148,9 @@ nmea_uart_data_s *gps_read_task() {
            nmea_uart_data->position.longitude.cardinal != 0)) {
         return nmea_uart_data;
       } else {
-        LOGD("Data Not Valid... Try Again\n");
+        ESP_LOGI(TAG, "Data Not Valid... Try Again");
         if (difftime(time(NULL), start) > 5) {
-          printf("GPS Time out!\n");
+          ESP_LOGE(TAG, "GPS Time out!");
           free(nmea_uart_data);
           return NULL;
         }

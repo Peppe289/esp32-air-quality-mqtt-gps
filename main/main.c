@@ -9,6 +9,7 @@
 #include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/unistd.h>
 #include <unistd.h>
 
@@ -62,7 +63,7 @@ static char *getString(nmea_uart_data_s *gps_data, struct hm3301_pm *hm3301) {
     cJSON_AddNumberToObject(pm, "PM10", hm3301->pm10);
   }
 
-  string = cJSON_PrintUnformatted(root);
+  string = cJSON_Print(root);
   cJSON_Delete(root);
   return string;
 }
@@ -104,7 +105,23 @@ void app_main(void) {
     }
 
     if (json_string) {
-      ESP_LOGI(TAG, "JSON\n: %s\n", json_string);
+      char buff[200] = {0};
+      int index = 0;
+
+      for (char *ptr = json_string;; ptr++) {
+        if (*ptr != '\n' && *ptr != '\0') {
+          buff[index++] = *ptr;
+        } else {
+          ESP_LOGI(TAG, "%s", buff);
+
+          memset(buff, 0, sizeof(buff));
+          index = 0;
+
+          if (*ptr == '\0')
+            break;
+        }
+      }
+
       publish((const char *)json_string);
       free(json_string);
       json_string = NULL;
