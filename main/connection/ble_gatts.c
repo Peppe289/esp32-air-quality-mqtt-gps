@@ -1,5 +1,6 @@
 #include "ble_gatts.h"
 #include "esp_bt.h"
+#include "esp_log.h"
 #include "freertos/event_groups.h"
 #include "freertos/task.h"
 #include <inttypes.h>
@@ -33,14 +34,16 @@ enum {
   WIFI_BT_NB,
 };
 
-char ssid[32];     /**< SSID of target AP. */
-char password[64]; /**< Password of target AP. */
-static bool isEnabled = false;
+const static char *TAG = "BLE";
 
-static char bt_device_name[ESP_BLE_ADV_NAME_LEN_MAX] = "ESP_HM3301_GPS";
+static char g_ssid[AUTH_MAX_LENGTH];     /**< SSID of target AP. */
+static char g_password[AUTH_MAX_LENGTH]; /**< Password of target AP. */
+static bool s_bt_is_enabled = false;
+
+static char s_bt_device_name[ESP_BLE_ADV_NAME_LEN_MAX] = "ESP_HM3301_GPS";
 static uint8_t adv_config_done = 0;
 static uint16_t wifi_bt_handle_table[WIFI_BT_NB];
-static uint8_t test_manufacturer[3] = {'E', 'S', 'P'};
+static uint8_t s_test_manufacturer[3] = {'E', 'S', 'P'};
 static uint8_t sec_service_uuid[16] = {0x21, 0x4e, 0x0a, 0x8f, 0x9b, 0x5c,
                                        0xd2, 0xa1, 0x8f, 0x4e, 0x64, 0x3b,
                                        0x9a, 0x1c, 0x2f, 0x7e};
@@ -64,8 +67,8 @@ static esp_ble_adv_data_t wifi_bt_adv_config = {
 static esp_ble_adv_data_t wifi_bt_scan_rsp_config = {
     .set_scan_rsp = true,
     .include_name = true,
-    .manufacturer_len = sizeof(test_manufacturer),
-    .p_manufacturer_data = test_manufacturer,
+    .manufacturer_len = sizeof(s_test_manufacturer),
+    .p_manufacturer_data = s_test_manufacturer,
 };
 
 static esp_ble_adv_params_t wifi_bt_adv_params = {
@@ -116,7 +119,7 @@ static const uint16_t ssid_uuid = 0x104A;
 static const uint16_t password_uuid = 0x104B;
 static const uint8_t char_prop_write = ESP_GATT_CHAR_PROP_BIT_WRITE;
 
-static const esp_gatts_attr_db_t heart_rate_gatt_db[WIFI_BT_NB] = {
+static const esp_gatts_attr_db_t wifi_prov_gatt_db[WIFI_BT_NB] = {
     [WIFI_BT_SVC] = {{ESP_GATT_AUTO_RSP},
                      {ESP_UUID_LEN_16, (uint8_t *)&primary_service_uuid,
                       ESP_GATT_PERM_READ, sizeof(uint16_t), sizeof(wifi_bt_svc),
@@ -130,8 +133,8 @@ static const esp_gatts_attr_db_t heart_rate_gatt_db[WIFI_BT_NB] = {
 
     [WIFI_BT_UUID_MEAS_VAL] = {{ESP_GATT_AUTO_RSP},
                                {ESP_UUID_LEN_16, (uint8_t *)&ssid_uuid,
-                                ESP_GATT_PERM_WRITE, sizeof(uint8_t) * 32, 0,
-                                NULL}},
+                                ESP_GATT_PERM_WRITE,
+                                sizeof(uint8_t) * AUTH_MAX_LENGTH, 0, NULL}},
 
     [WIFI_BT_PASS_CHAR] = {{ESP_GATT_AUTO_RSP},
                            {ESP_UUID_LEN_16, (uint8_t *)&char_decl_uuid,
@@ -140,11 +143,19 @@ static const esp_gatts_attr_db_t heart_rate_gatt_db[WIFI_BT_NB] = {
 
     [WIFI_BT_PASS_MEAS_VAL] = {{ESP_GATT_AUTO_RSP},
                                {ESP_UUID_LEN_16, (uint8_t *)&password_uuid,
-                                ESP_GATT_PERM_WRITE, sizeof(uint8_t) * 64, 0,
-                                NULL}},
+                                ESP_GATT_PERM_WRITE,
+                                sizeof(uint8_t) * AUTH_MAX_LENGTH, 0, NULL}},
 };
 
 /*********************************************************************************/
+
+char *ble_getSSID(void) {
+  return g_ssid;
+}
+
+char *ble_getPassword(void) {
+  return g_password;
+}
 
 static void show_bonded_devices(void) {
   int dev_num = esp_ble_get_bond_device_num();
@@ -181,11 +192,11 @@ static void remove_all_bonded_devices(void) {
   free(dev_list);
 }
 
-uint8_t isBTEnabled() { return isEnabled ? 1 : 0; }
+uint8_t isBTEnabled() { return s_bt_is_enabled ? 1 : 0; }
 
 void disable_bt() {
-  if (isEnabled) {
-    isEnabled = false;
+  if (s_bt_is_enabled) {
+    s_bt_is_enabled = false;
     remove_all_bonded_devices();
     ESP_ERROR_CHECK(esp_bluedroid_disable());
     ESP_ERROR_CHECK(esp_bluedroid_deinit());
@@ -255,19 +266,25 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event,
                                         esp_ble_gatts_cb_param_t *param) {
   switch (event) {
   case ESP_GATTS_REG_EVT:
-    esp_ble_gap_set_device_name(bt_device_name);
+    esp_ble_gap_set_device_name(s_bt_device_name);
     esp_ble_gap_config_local_privacy(true);
-    esp_ble_gatts_create_attr_tab(heart_rate_gatt_db, gatts_if, WIFI_BT_NB,
+    esp_ble_gatts_create_attr_tab(wifi_prov_gatt_db, gatts_if, WIFI_BT_NB,
                                   WIFI_BT_SVC_INST_ID);
     break;
   case ESP_GATTS_READ_EVT:
     break;
   case ESP_GATTS_WRITE_EVT:
     if (param->write.handle == wifi_bt_handle_table[WIFI_BT_UUID_MEAS_VAL]) {
-      sprintf(ssid, "%.*s", param->write.len, param->write.value);
+      const int len = (param->write.len >= AUTH_MAX_LENGTH) ? (AUTH_MAX_LENGTH - 1)
+                                                      : param->write.len;
+      memcpy(g_ssid, param->write.value, len);
+      g_ssid[len] = '\0';
     } else if (param->write.handle ==
                wifi_bt_handle_table[WIFI_BT_PASS_MEAS_VAL]) {
-      sprintf(password, "%.*s", param->write.len, param->write.value);
+      if (param->write.len < 8)
+        ESP_LOGE(TAG, "An invalid password was provided (length less than 8 "
+                      "characters).");
+      sprintf(g_password, "%.*s", param->write.len, param->write.value);
     }
     break;
   case ESP_GATTS_CONNECT_EVT:
@@ -359,7 +376,7 @@ void start_bt() {
   if (ret)
     return;
 
-  isEnabled = true;
+  s_bt_is_enabled = true;
 
   esp_ble_auth_req_t auth_req = ESP_LE_AUTH_REQ_SC_BOND;
   esp_ble_io_cap_t iocap = ESP_IO_CAP_NONE;

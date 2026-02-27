@@ -4,14 +4,14 @@
 #include "nvs_flash.h"
 #include <string.h>
 
-#include <pthread.h>
-#include <sys/_pthreadtypes.h>
-
 #include "ble_gatts.h"
 #include "portmacro.h"
 #include "wifi_conn.h"
 
-void *manageConnection(void *args) {
+void manageConnection(void *args) {
+
+  char *ssid = ble_getSSID();
+  char *password = ble_getPassword(); 
 
 #ifdef WIFI_SSID
   memcpy(ssid, WIFI_SSID, sizeof(WIFI_SSID));
@@ -25,7 +25,7 @@ void *manageConnection(void *args) {
     vTaskDelay(3000 / portTICK_PERIOD_MS);
 
     // If the wifi is connected or not yet all is fine.
-    if (isWiFiConnecting())
+    if (get_wifi_status() & (WIFI_STATE_CONNECTING | WIFI_STATE_CONNECTED))
       continue;
 
     // If the ssid and password have data, try WIFI connection.
@@ -35,8 +35,8 @@ void *manageConnection(void *args) {
       vTaskDelay(1000 / portTICK_PERIOD_MS);
       wifi_init_sta(ssid, password);
       vTaskDelay(1000 / portTICK_PERIOD_MS);
-      memset(ssid, 0, sizeof(ssid));
-      memset(password, 0, sizeof(password));
+      memset(ssid, 0, AUTH_MAX_LENGTH);
+      memset(password, 0, AUTH_MAX_LENGTH);
       continue;
     }
 
@@ -46,15 +46,10 @@ void *manageConnection(void *args) {
       start_bt();
     }
   }
-
-  return NULL;
 }
 
 void connection_listener_start(void) {
   esp_err_t ret;
-  pthread_t tconfig;
-
-  pthread_create(&tconfig, NULL, manageConnection, NULL);
 
   // Initialize NVS.
   ret = nvs_flash_init();
@@ -64,6 +59,6 @@ void connection_listener_start(void) {
     ret = nvs_flash_init();
   }
   ESP_ERROR_CHECK(ret);
-  // Don't wait for ending process
-  // pthread_join(tconfig, NULL);
+
+  xTaskCreate(manageConnection, "connManager", 4096, NULL, 5, NULL);
 }
