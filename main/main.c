@@ -25,6 +25,15 @@ static const char *TAG = "MAIN";
 #define LED_GREEN_GPIO 3
 #define LED_RED_GPIO 4
 
+/**
+ * @brief Converts sensor data into a minified JSON string.
+ * * Uses cJSON to create a structured object containing GPS coordinates,
+ * time, and PM concentration values.
+ * * @param gps_data Pointer to the validated NMEA data structure.
+ * @param hm3301   Pointer to the parsed PM sensor data.
+ * @return char* Pointer to the JSON string. Note: Caller is responsible for
+ * calling free().
+ */
 static char *getString(nmea_uart_data_s *gps_data, struct hm3301_pm *hm3301) {
   cJSON *root;
   cJSON *pm, *position, *longitude, *latitude, *time;
@@ -73,6 +82,11 @@ static char *getString(nmea_uart_data_s *gps_data, struct hm3301_pm *hm3301) {
   return string;
 }
 
+/**
+ * @brief Initializes onboard status LEDs.
+ * * Sets Red LED as Power/Status indicator and Green LED for
+ * Connectivity/Activity.
+ */
 static void led_init(void) {
   // Initialize Green LED (GPIO2) - OFF initially
   gpio_reset_pin(LED_GREEN_GPIO);

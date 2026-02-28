@@ -19,6 +19,13 @@ static const char *TAG = "HM3301";
 #define I2C_MASTER_TX_BUF_DISABLE 0 /*!< I2C master doesn't need buffer */
 #define I2C_MASTER_RX_BUF_DISABLE 0 /*!< I2C master doesn't need buffer */
 
+/**
+ * @brief Validates the integrity of the data packet from HM3301.
+ * * Computes the sum of the first 28 bytes and compares it with the checksum
+ * byte (the 29th byte) to ensure data transmission accuracy.
+ * * @param data Pointer to the 29-byte raw data buffer.
+ * @return true if checksum is valid, false otherwise.
+ */
 static bool hm3301_verify_checksum(uint8_t *data) {
   uint8_t sum = 0;
   for (int i = 0; i < HM3301_BIT_LEN - 1; i++) {
@@ -27,6 +34,19 @@ static bool hm3301_verify_checksum(uint8_t *data) {
   return ((uint8_t)(sum & 0xFF)) == data[HM3301_BIT_LEN - 1];
 }
 
+/**
+ * @brief Performs a synchronized read from the HM3301 sensor.
+ * * Sends the read command (0x88) and receives the 29-byte data packet.
+ * It handles checksum verification and maps the raw data to the PM structure.
+ * * @param[out] raw_data Optional pointer to store the raw 29-byte I2C buffer.
+ * Pass NULL if not needed.
+ * @param[out] hm3301   Pointer to the destination structure for parsed PM1.0,
+ * PM2.5, and PM10 values.
+ * @return uint8_t
+ * - 0: Success.
+ * - ESP_ERR_*: I2C transmission error codes.
+ * - -1: Checksum failure or null pointer assignment.
+ */
 uint8_t i2c_hm3301_read(uint8_t *raw_data, struct hm3301_pm *hm3301) {
   uint8_t data_rd[HM3301_BIT_LEN] = {0};
   uint8_t cmd = HM3301_READ_CMD;
@@ -61,6 +81,15 @@ uint8_t i2c_hm3301_read(uint8_t *raw_data, struct hm3301_pm *hm3301) {
   return 0;
 }
 
+/**
+ * @brief Initializes the I2C Master Bus and the HM3301 device.
+ * * This function:
+ * 1. Allocates the I2C master bus (Driver V2).
+ * 2. Adds the HM3301 sensor to the bus with a specific clock speed (50kHz).
+ * 3. Probes the bus to confirm sensor presence.
+ * 4. Implements a stabilization delay and performs dummy reads to clear
+ * the sensor's internal buffer for consistent data.
+ */
 void init_i2c_hm3301() {
   i2c_master_bus_config_t i2c_mst_config = {
       .i2c_port = I2C_NUM_0,

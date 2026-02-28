@@ -37,6 +37,11 @@ static const uart_config_t uart_config = {
     .source_clk = UART_SCLK_DEFAULT,
 };
 
+/**
+ * @brief Initializes the GPS UART interface.
+ * * Configures the UART driver with the defined baud rate, pins, and buffer
+ * size. It uses UART_NUM_1 by default for GPS communication.
+ */
 void init_gps_uart(void) {
   uart_driver_install(GPS_UART_PORT, LENGHT_BUFFER * 2, 0, 0, NULL, 0);
   uart_param_config(GPS_UART_PORT, &uart_config);
@@ -44,6 +49,15 @@ void init_gps_uart(void) {
                UART_PIN_NO_CHANGE);
 }
 
+/**
+ * @brief Extracts and maps NMEA data to a custom simplified structure.
+ * * This function processes raw NMEA objects (e.g., GPGGA), extracts relevant
+ * fields like satellite count, position (lat/long), and time, and stores them
+ * into the custom nmea_uart_data_s container.
+ * * @param data           Pointer to the raw NMEA structure from the library.
+ * @param nmea_uart_data Pointer to the custom destination structure.
+ * * @note Frees the NMEA library data object before returning.
+ */
 static void gps_data(nmea_s *data, nmea_uart_data_s *nmea_uart_data) {
   if (NULL != data) {
     if (0 < data->errors) {
@@ -57,6 +71,11 @@ static void gps_data(nmea_s *data, nmea_uart_data_s *nmea_uart_data) {
       nmea_uart_data->n_satellites = ((nmea_gpgga_s *)data)->n_satellites;
       ESP_LOGI(TAG, "Satellites: %d", ((nmea_gpgga_s *)data)->n_satellites);
 
+      /**
+       * Position fields (latitude/longitude) are contiguous in memory.
+       * Perform a single block copy for both structures to optimize
+       * performance.
+       */
       memcpy(&nmea_uart_data->position, &((nmea_gpgga_s *)data)->longitude,
              sizeof(nmea_position) * 2);
 
@@ -84,6 +103,14 @@ static void gps_data(nmea_s *data, nmea_uart_data_s *nmea_uart_data) {
 
 #define endline(x) unlikely((x) == '\0' || (x) == '\n')
 
+/**
+ * @brief Parses raw UART strings into NMEA sentences.
+ * * Synchronizes with the '$' start delimiter, splits the incoming buffer into
+ * individual NMEA strings, and passes them to the NMEA library parser.
+ * * @param str            Raw string buffer from UART.
+ * @param nmea_uart_data Pointer to the destination data structure.
+ * @param len            Length of the raw string buffer.
+ */
 static void gps_parse(const char *str, nmea_uart_data_s *nmea_uart_data,
                       int len) {
   char *start = (char *)str;
@@ -122,6 +149,13 @@ static void gps_parse(const char *str, nmea_uart_data_s *nmea_uart_data,
   }
 }
 
+/**
+ * @brief Validates the parsed GPS data.
+ * * Checks if the satellite count is greater than zero and if the
+ * latitude/longitude coordinates contain non-zero values.
+ * * @param data Pointer to the custom GPS data structure.
+ * @return uint8_t 1 if data is valid, 0 otherwise.
+ */
 static inline uint8_t is_gps_data_valid(const nmea_uart_data_s *data) {
   if (data->n_satellites == 0)
     return 0;
@@ -130,6 +164,17 @@ static inline uint8_t is_gps_data_valid(const nmea_uart_data_s *data) {
           data->position.longitude.degrees != 0);
 }
 
+/**
+ * @brief Task-level function to perform a synchronous GPS data fetch.
+ * * Reads bytes from the UART port, attempts to parse valid NMEA sentences,
+ * and populates the provided structure. It includes a 5-second timeout
+ * mechanism if no valid fix is obtained.
+ * * @param nmea_uart_data Pointer to the structure where results will be
+ * stored.
+ * @return uint8_t
+ * - 0: Success (Valid data obtained)
+ * - 1: Failure (Timeout or invalid memory)
+ */
 uint8_t gps_read_task(nmea_uart_data_s *nmea_uart_data) {
   uint8_t data[LENGHT_BUFFER];
   time_t start = time(NULL);
