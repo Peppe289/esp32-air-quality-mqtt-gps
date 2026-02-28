@@ -8,10 +8,23 @@
 #include "portmacro.h"
 #include "wifi_conn.h"
 
+/**
+ * @brief State machine task that manages the WiFi and Bluetooth lifecycle.
+ * * Since ESP32-C3 has a single radio, this task alternates between BLE and
+ * WiFi:
+ * 1. Monitors the WiFi status; if connected or connecting, it stays idle.
+ * 2. If new credentials are received via BLE (or set via macros), it shuts down
+ * BLE and attempts a WiFi connection.
+ * 3. If WiFi is disconnected and no credentials are pending, it ensures BLE
+ * is active for new provisioning.
+ * * @note Future updates will include loading/saving credentials from the
+ * "storage" partition.
+ * @param args Unused task parameters.
+ */
 void manageConnection(void *args) {
 
   char *ssid = ble_getSSID();
-  char *password = ble_getPassword(); 
+  char *password = ble_getPassword();
 
 #ifdef WIFI_SSID
   memcpy(ssid, WIFI_SSID, sizeof(WIFI_SSID));
@@ -48,6 +61,13 @@ void manageConnection(void *args) {
   }
 }
 
+/**
+ * @brief Entry point for the connectivity management system.
+ * * Initializes the Non-Volatile Storage (NVS) required for both WiFi and
+ * Bluetooth stacks, then spawns the 'connManager' FreeRTOS task.
+ * * @note NVS is erased and re-initialized if no free pages are found or a
+ * version mismatch occurs.
+ */
 void connection_listener_start(void) {
   esp_err_t ret;
 
