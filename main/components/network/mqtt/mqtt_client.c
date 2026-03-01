@@ -7,7 +7,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "conn_mqtt_client.h"
+#include "network/mqtt_client.h"
 #include "esp_log.h"
 
 #ifndef MQTT_BROKER

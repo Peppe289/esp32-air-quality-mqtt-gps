@@ -18,7 +18,7 @@
 #include "ble_gatts.h"
 #include "wifi_conn.h"
 
-#include "mqtt/conn_mqtt_client.h"
+#include "../mqtt/network/mqtt_client.h"
 
 #define ESP_MAXIMUM_RETRY 2
 
