@@ -30,8 +30,8 @@
 #define MQTT_PASSWORD "1234"
 #endif
 
-static esp_mqtt_client_handle_t client = NULL;
-static const esp_mqtt_client_config_t mqtt_cfg = {
+static esp_mqtt_client_handle_t s_mqtt_client = NULL;
+static const esp_mqtt_client_config_t s_mqtt_cfg = {
     .broker =
         {
             .address =
@@ -87,14 +87,14 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base,
   }
 }
 
-void publish(const char *data) {
-  if (client)
-    esp_mqtt_client_publish(client, "/topic/qos0", data, 0, 0, 0);
+void mqtt_publish_data_client(const char *p_str) {
+  if (s_mqtt_client)
+    esp_mqtt_client_publish(s_mqtt_client, "/topic/qos0", p_str, 0, 0, 0);
 }
 
-void mqtt_app_start(void) {
-  client = esp_mqtt_client_init(&mqtt_cfg);
-  esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler,
+void mqtt_start_client(void) {
+  s_mqtt_client = esp_mqtt_client_init(&s_mqtt_cfg);
+  esp_mqtt_client_register_event(s_mqtt_client, ESP_EVENT_ANY_ID, mqtt_event_handler,
                                  NULL);
-  esp_mqtt_client_start(client);
+  esp_mqtt_client_start(s_mqtt_client);
 }

@@ -148,7 +148,7 @@ void app_main(void) {
         }
       }
 
-      publish((const char *)json_string);
+      mqtt_publish_data_client((const char *)json_string);
       free(json_string);
       json_string = NULL;
     }
