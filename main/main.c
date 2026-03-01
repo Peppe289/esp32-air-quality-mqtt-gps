@@ -23,25 +23,31 @@ static const char *TAG = "MAIN";
 #define LED_GREEN_GPIO 3
 #define LED_RED_GPIO 4
 
+struct json_obj {
+  char *unformatted;
+  char *std;
+} json_obj;
+
 /**
  * @brief Converts sensor data into a minified JSON string.
  * * Uses cJSON to create a structured object containing GPS coordinates,
  * time, and PM concentration values.
  * * @param p_gps_data Pointer to the validated NMEA data structure.
  * @param p_hm3301_data   Pointer to the parsed PM sensor data.
- * @return char* Pointer to the JSON string. Note: Caller is responsible for
- * calling free().
+ * @return struct json_obj Contains pointer to the JSON string
+ * formatted/unformatted. Note: Caller is responsible for calling free().
  */
-static char *serialize_data_to_json_string(gps_data_t *p_gps_data,
-                                           hm3301_data_t *p_hm3301_data) {
+static struct json_obj
+serialize_data_to_json_string(gps_data_t *p_gps_data,
+                              hm3301_data_t *p_hm3301_data) {
   cJSON *root;
   cJSON *pm, *position, *longitude, *latitude, *time;
-  char *string;
+  struct json_obj json;
 
   if (p_gps_data || p_hm3301_data)
     root = cJSON_CreateObject();
   else
-    return NULL;
+    return (struct json_obj){NULL, NULL};
 
   if (p_gps_data) {
     cJSON_AddNumberToObject(root, "satellites", p_gps_data->n_satellites);
@@ -76,9 +82,10 @@ static char *serialize_data_to_json_string(gps_data_t *p_gps_data,
     cJSON_AddNumberToObject(pm, "PM10", p_hm3301_data->pm10);
   }
 
-  string = cJSON_Print(root);
+  json.unformatted = cJSON_PrintUnformatted(root);
+  json.std = cJSON_Print(root);
   cJSON_Delete(root);
-  return string;
+  return json;
 }
 
 /**
@@ -179,7 +186,7 @@ void connection_listener_start(void) {
 void app_main(void) {
   hm3301_data_t hm3301 = {0};
   gps_data_t nmea_gps = {0};
-  char *json_string;
+  struct json_obj json;
 
   led_init();
   hm3301_init_i2c();
@@ -201,13 +208,13 @@ void app_main(void) {
       continue;
     }
 
-    json_string = serialize_data_to_json_string(&nmea_gps, &hm3301);
+    json = serialize_data_to_json_string(&nmea_gps, &hm3301);
 
-    if (json_string) {
+    if (json.std) {
       char buff[200] = {0};
       int index = 0;
 
-      for (char *ptr = json_string;; ptr++) {
+      for (char *ptr = json.std;; ptr++) {
         if (*ptr != '\n' && *ptr != '\0') {
           buff[index++] = *ptr;
         } else {
@@ -221,9 +228,10 @@ void app_main(void) {
         }
       }
 
-      mqtt_publish_data_client((const char *)json_string);
-      free(json_string);
-      json_string = NULL;
+      mqtt_publish_data_client((const char *)json.unformatted);
+      free(json.unformatted);
+      free(json.std);
+      memset(&json, 0, sizeof(char *) * 2);
     }
   }
 }
