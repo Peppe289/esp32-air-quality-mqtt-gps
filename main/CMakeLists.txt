@@ -6,6 +6,7 @@ set(srcs
     "components/network/ble/ble_gatts.c"
     "components/network/mqtt/mqtt_client.c"
     "components/storage/storage.c"
+    "components/system_event_mask.c"
 )
 
 set(include_dirs

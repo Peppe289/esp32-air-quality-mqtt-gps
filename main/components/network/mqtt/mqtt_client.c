@@ -30,6 +30,12 @@
 #define MQTT_PASSWORD "1234"
 #endif
 
+typedef struct mqtt_callbacks_t {
+  void (*mqtt_state_handler)(uint32_t bit, bool add_bit);
+  uint32_t (*system_get_state)(void);
+} mqtt_callbacks_t;
+
+mqtt_callbacks_t s_mqtt_event_group = {NULL, NULL};
 static esp_mqtt_client_handle_t s_mqtt_client = NULL;
 static const esp_mqtt_client_config_t s_mqtt_cfg = {
     .broker =
@@ -62,6 +68,13 @@ static const esp_mqtt_client_config_t s_mqtt_cfg = {
                 },
         },
 };
+
+void mqtt_register_system_handler(void (*mqtt_state_handler)(uint32_t bit,
+                                                             bool add_bit),
+                                  uint32_t (*system_get_state)(void)) {
+  s_mqtt_event_group.mqtt_state_handler = mqtt_state_handler;
+  s_mqtt_event_group.system_get_state = system_get_state;
+}
 
 static void mqtt_event_handler(void *handler_args, esp_event_base_t base,
                                int32_t event_id, void *event_data) {

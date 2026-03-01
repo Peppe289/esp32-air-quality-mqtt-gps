@@ -22,6 +22,12 @@
 
 #define ESP_MAXIMUM_RETRY 2
 
+typedef struct wifi_callbacks_t {
+  void (*wifi_state_handler)(uint32_t bit, bool add_bit);
+  uint32_t (*system_get_state)(void);
+} wifi_callbacks_t;
+
+wifi_callbacks_t s_wifi_event_group = {NULL, NULL};
 static int s_retry_num = 0;
 static uint8_t s_wifi_status = WIFI_STATE_IDLE;
 static esp_netif_t *netif = NULL;
@@ -116,4 +122,11 @@ void wifi_init_sta(char *_ssid, char *passwd) {
   ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
   ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
   ESP_ERROR_CHECK(esp_wifi_start());
+}
+
+void wifi_register_system_handler(void (*wifi_state_handler)(uint32_t bit,
+                                                             bool add_bit),
+                                  uint32_t (*system_get_state)(void)) {
+  s_wifi_event_group.wifi_state_handler = wifi_state_handler;
+  s_wifi_event_group.system_get_state = system_get_state;
 }

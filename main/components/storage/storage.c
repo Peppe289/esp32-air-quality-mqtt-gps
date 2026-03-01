@@ -3,6 +3,7 @@
 #include "esp_err.h"
 #include "esp_log.h"
 #include "esp_spiffs.h"
+#include "time.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -10,6 +11,13 @@
 #include <sys/unistd.h>
 
 #define BASE_PATH "/spiffs"
+
+typedef struct storage_callbacks_t {
+  void (*storage_state_handler)(uint32_t bit, bool add_bit);
+  uint32_t (*system_get_state)(void);
+} storage_callbacks_t;
+
+storage_callbacks_t s_storage_event_group = {NULL, NULL};
 
 static const char *TAG = "SPIFFS";
 
@@ -19,6 +27,13 @@ static esp_vfs_spiffs_conf_t s_spiffs_conf = {.base_path = BASE_PATH,
                                               .format_if_mount_failed = true};
 
 static const char *s_file_path = BASE_PATH "/offline_data.jsonl";
+
+void storage_register_system_handler(
+    void (*storage_state_handler)(uint32_t bit, bool add_bit),
+    uint32_t (*system_get_state)(void)) {
+  s_storage_event_group.storage_state_handler = storage_state_handler;
+  s_storage_event_group.system_get_state = system_get_state;
+}
 
 /**
  * @brief Initializes the SPIFFS filesystem.
