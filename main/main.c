@@ -49,6 +49,9 @@ serialize_data_to_json_string(gps_data_t *p_gps_data,
   else
     return (struct json_obj){NULL, NULL};
 
+  if (!root)
+    return (struct json_obj){NULL, NULL};
+
   if (p_gps_data) {
     cJSON_AddNumberToObject(root, "satellites", p_gps_data->n_satellites);
 
@@ -211,7 +214,7 @@ void app_main(void) {
     json = serialize_data_to_json_string(&nmea_gps, &hm3301);
 
     if (json.std) {
-      char buff[200] = {0};
+      char buff[512] = {0};
       int index = 0;
 
       for (char *ptr = json.std;; ptr++) {
