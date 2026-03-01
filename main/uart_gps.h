@@ -12,17 +12,16 @@
 #include "gpvtg.h"
 #include "nmea.h"
 
-typedef struct {
+typedef struct gps_data_s {
   int n_satellites;
   struct {
     nmea_position longitude;
     nmea_position latitude;
   } position;
   struct tm time;
-} nmea_uart_data_s;
+} gps_data_t;
 
-//nmea_uart_data_s get_latest_nmea_data(nmea_t index);
-void init_gps_uart(void);
-uint8_t gps_read_task(nmea_uart_data_s *);
+void gps_init_uart(void);
+uint8_t gps_read_uart(gps_data_t *);
 
 #endif

@@ -29,52 +29,53 @@ static const char *TAG = "MAIN";
  * @brief Converts sensor data into a minified JSON string.
  * * Uses cJSON to create a structured object containing GPS coordinates,
  * time, and PM concentration values.
- * * @param gps_data Pointer to the validated NMEA data structure.
- * @param hm3301   Pointer to the parsed PM sensor data.
+ * * @param p_gps_data Pointer to the validated NMEA data structure.
+ * @param p_hm3301_data   Pointer to the parsed PM sensor data.
  * @return char* Pointer to the JSON string. Note: Caller is responsible for
  * calling free().
  */
-static char *getString(nmea_uart_data_s *gps_data, struct hm3301_pm *hm3301) {
+static char *serialize_data_to_json_string(gps_data_t *p_gps_data,
+                                           hm3301_data_t *p_hm3301_data) {
   cJSON *root;
   cJSON *pm, *position, *longitude, *latitude, *time;
   char *string;
 
-  if (gps_data || hm3301)
+  if (p_gps_data || p_hm3301_data)
     root = cJSON_CreateObject();
   else
     return NULL;
 
-  if (gps_data) {
-    cJSON_AddNumberToObject(root, "satellites", gps_data->n_satellites);
+  if (p_gps_data) {
+    cJSON_AddNumberToObject(root, "satellites", p_gps_data->n_satellites);
 
     position = cJSON_AddObjectToObject(root, "position");
     longitude = cJSON_AddObjectToObject(position, "longitude");
     latitude = cJSON_AddObjectToObject(position, "latitude");
     cJSON_AddNumberToObject(longitude, "degrees",
-                            gps_data->position.longitude.degrees);
+                            p_gps_data->position.longitude.degrees);
     cJSON_AddNumberToObject(longitude, "minutes",
-                            gps_data->position.longitude.minutes);
+                            p_gps_data->position.longitude.minutes);
     cJSON_AddStringToObject(
         longitude, "cardinal",
-        (char[]){gps_data->position.longitude.cardinal, '\0'});
+        (char[]){p_gps_data->position.longitude.cardinal, '\0'});
     cJSON_AddNumberToObject(latitude, "degrees",
-                            gps_data->position.latitude.degrees);
+                            p_gps_data->position.latitude.degrees);
     cJSON_AddNumberToObject(latitude, "minutes",
-                            gps_data->position.latitude.minutes);
+                            p_gps_data->position.latitude.minutes);
     cJSON_AddStringToObject(
         latitude, "cardinal",
-        (char[]){gps_data->position.latitude.cardinal, '\0'});
+        (char[]){p_gps_data->position.latitude.cardinal, '\0'});
     time = cJSON_AddObjectToObject(root, "time");
-    cJSON_AddNumberToObject(time, "hours", gps_data->time.tm_hour);
-    cJSON_AddNumberToObject(time, "minutes", gps_data->time.tm_min);
-    cJSON_AddNumberToObject(time, "seconds", gps_data->time.tm_sec);
+    cJSON_AddNumberToObject(time, "hours", p_gps_data->time.tm_hour);
+    cJSON_AddNumberToObject(time, "minutes", p_gps_data->time.tm_min);
+    cJSON_AddNumberToObject(time, "seconds", p_gps_data->time.tm_sec);
   }
 
-  if (hm3301) {
+  if (p_hm3301_data) {
     pm = cJSON_AddObjectToObject(root, "hm3301");
-    cJSON_AddNumberToObject(pm, "PM1.0", hm3301->pm1_0);
-    cJSON_AddNumberToObject(pm, "PM2.5", hm3301->pm2_5);
-    cJSON_AddNumberToObject(pm, "PM10", hm3301->pm10);
+    cJSON_AddNumberToObject(pm, "PM1.0", p_hm3301_data->pm1_0);
+    cJSON_AddNumberToObject(pm, "PM2.5", p_hm3301_data->pm2_5);
+    cJSON_AddNumberToObject(pm, "PM10", p_hm3301_data->pm10);
   }
 
   string = cJSON_Print(root);
@@ -103,14 +104,13 @@ static void led_init(void) {
 }
 
 void app_main(void) {
-  uint8_t data_rd[HM3301_BIT_LEN];
-  struct hm3301_pm hm3301 = {0};
-  nmea_uart_data_s nmea_gps = {0};
+  hm3301_data_t hm3301 = {0};
+  gps_data_t nmea_gps = {0};
   char *json_string;
 
   led_init();
-  init_i2c_hm3301();
-  init_gps_uart();
+  hm3301_init_i2c();
+  gps_init_uart();
   connection_listener_start();
 
   vTaskDelay(pdMS_TO_TICKS(1000));
@@ -118,17 +118,17 @@ void app_main(void) {
   for (;;) {
     vTaskDelay(pdMS_TO_TICKS(10000));
 
-    if (i2c_hm3301_read(data_rd, &hm3301)) {
+    if (hm3301_read_i2c(NULL, &hm3301)) {
       ESP_LOGE(TAG, "Error reading HM3301. Continue...\n");
       continue;
     }
 
-    if (gps_read_task(&nmea_gps)) {
+    if (gps_read_uart(&nmea_gps)) {
       ESP_LOGE(TAG, "Error reading GPS. Continue...");
       continue;
     }
 
-    json_string = getString(&nmea_gps, &hm3301);
+    json_string = serialize_data_to_json_string(&nmea_gps, &hm3301);
 
     if (json_string) {
       char buff[200] = {0};

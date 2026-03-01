@@ -28,7 +28,7 @@
 
 static const char *TAG = "GPS";
 
-static const uart_config_t uart_config = {
+static const uart_config_t s_uart_config = {
     .baud_rate = GPS_BAUD_RATE,
     .data_bits = UART_DATA_8_BITS,
     .parity = UART_PARITY_DISABLE,
@@ -42,9 +42,9 @@ static const uart_config_t uart_config = {
  * * Configures the UART driver with the defined baud rate, pins, and buffer
  * size. It uses UART_NUM_1 by default for GPS communication.
  */
-void init_gps_uart(void) {
+void gps_init_uart(void) {
   uart_driver_install(GPS_UART_PORT, LENGHT_BUFFER * 2, 0, 0, NULL, 0);
-  uart_param_config(GPS_UART_PORT, &uart_config);
+  uart_param_config(GPS_UART_PORT, &s_uart_config);
   uart_set_pin(GPS_UART_PORT, GPS_TXD, GPS_RXD, UART_PIN_NO_CHANGE,
                UART_PIN_NO_CHANGE);
 }
@@ -54,50 +54,51 @@ void init_gps_uart(void) {
  * * This function processes raw NMEA objects (e.g., GPGGA), extracts relevant
  * fields like satellite count, position (lat/long), and time, and stores them
  * into the custom nmea_uart_data_s container.
- * * @param data           Pointer to the raw NMEA structure from the library.
- * @param nmea_uart_data Pointer to the custom destination structure.
+ * * @param p_nmea_obj Pointer to the raw NMEA structure from the library.
+ * @param p_gps_data Pointer to the custom destination structure.
  * * @note Frees the NMEA library data object before returning.
  */
-static void gps_data(nmea_s *data, nmea_uart_data_s *nmea_uart_data) {
-  if (NULL != data) {
-    if (0 < data->errors) {
+static void gps_map_to_struct(nmea_s *p_nmea_obj, gps_data_t *p_gps_data) {
+  if (NULL != p_nmea_obj) {
+    if (0 < p_nmea_obj->errors) {
       ESP_LOGW(TAG, "Invalid String");
       return;
     }
 
-    ESP_LOGD(TAG, "DATA Type: %d", data->type);
+    ESP_LOGD(TAG, "DATA Type: %d", p_nmea_obj->type);
 
-    if (NMEA_GPGGA == data->type) {
-      nmea_uart_data->n_satellites = ((nmea_gpgga_s *)data)->n_satellites;
-      ESP_LOGI(TAG, "Satellites: %d", ((nmea_gpgga_s *)data)->n_satellites);
+    if (NMEA_GPGGA == p_nmea_obj->type) {
+      p_gps_data->n_satellites = ((nmea_gpgga_s *)p_nmea_obj)->n_satellites;
+      ESP_LOGI(TAG, "Satellites: %d",
+               ((nmea_gpgga_s *)p_nmea_obj)->n_satellites);
 
       /**
        * Position fields (latitude/longitude) are contiguous in memory.
        * Perform a single block copy for both structures to optimize
        * performance.
        */
-      memcpy(&nmea_uart_data->position, &((nmea_gpgga_s *)data)->longitude,
+      memcpy(&p_gps_data->position, &((nmea_gpgga_s *)p_nmea_obj)->longitude,
              sizeof(nmea_position) * 2);
 
       ESP_LOGI(TAG, "Latitude: %d° %f' %c",
-               nmea_uart_data->position.latitude.degrees,
-               nmea_uart_data->position.latitude.minutes,
-               (char)nmea_uart_data->position.latitude.cardinal);
+               p_gps_data->position.latitude.degrees,
+               p_gps_data->position.latitude.minutes,
+               (char)p_gps_data->position.latitude.cardinal);
 
       ESP_LOGI(TAG, "Longitude: %d° %f' %c",
-               nmea_uart_data->position.longitude.degrees,
-               nmea_uart_data->position.longitude.minutes,
-               (char)nmea_uart_data->position.longitude.cardinal);
+               p_gps_data->position.longitude.degrees,
+               p_gps_data->position.longitude.minutes,
+               (char)p_gps_data->position.longitude.cardinal);
 
-      nmea_uart_data->time = ((nmea_gpgga_s *)data)->time;
+      p_gps_data->time = ((nmea_gpgga_s *)p_nmea_obj)->time;
       char buf[100];
       if (strftime(buf, sizeof(buf), "%H:%M:%S",
-                   (const struct tm *)&(((nmea_gpgga_s *)data)->time))) {
+                   (const struct tm *)&(((nmea_gpgga_s *)p_nmea_obj)->time))) {
         ESP_LOGI(TAG, "Time: %s", buf);
       }
     }
 
-    nmea_free(data);
+    nmea_free(p_nmea_obj);
   }
 }
 
@@ -107,45 +108,47 @@ static void gps_data(nmea_s *data, nmea_uart_data_s *nmea_uart_data) {
  * @brief Parses raw UART strings into NMEA sentences.
  * * Synchronizes with the '$' start delimiter, splits the incoming buffer into
  * individual NMEA strings, and passes them to the NMEA library parser.
- * * @param str            Raw string buffer from UART.
- * @param nmea_uart_data Pointer to the destination data structure.
- * @param len            Length of the raw string buffer.
+ * * @param p_raw_stream Raw string buffer from UART.
+ * @param p_gps_data Pointer to the destination data structure.
+ * @param buffer_size Length of the raw string buffer.
  */
-static void gps_parse(const char *str, nmea_uart_data_s *nmea_uart_data,
-                      int len) {
-  char *start = (char *)str;
-  char cpy[100] = {0};
-  size_t index = 0;
+static void gps_decode_packet(const char *p_raw_stream, gps_data_t *p_gps_data,
+                              int buffer_size) {
+  char *p_cursor = (char *)p_raw_stream;
+  char sentence_buffer[100] = {0};
+  size_t char_idx = 0;
 
   // Sync
-  while (*start != '$' && *start != '\0' && (len-- > 0))
-    start++;
+  while (*p_cursor != '$' && *p_cursor != '\0' && (buffer_size-- > 0))
+    p_cursor++;
 
-  if (endline(*start))
+  if (endline(*p_cursor))
     return; // Empty message
 
-  while (len > 0) {
-    index = 0;
-    memset(cpy, 0, sizeof(cpy));
+  while (buffer_size > 0) {
+    char_idx = 0;
+    memset(sentence_buffer, 0, sizeof(sentence_buffer));
     for (;;) {
-      if (endline(*start)) {
-        start++;
-        len--;
-        cpy[index] = '\n';
+      if (endline(*p_cursor)) {
+        p_cursor++;
+        buffer_size--;
+        sentence_buffer[char_idx] = '\n';
         break;
       }
-      cpy[index++] = *start;
-      start++;
-      len--;
+      sentence_buffer[char_idx++] = *p_cursor;
+      p_cursor++;
+      buffer_size--;
     }
 
     // If data lenght is too long or not start with '$', skip to next line
-    if (unlikely(index >= sizeof(cpy) - 1 || cpy[0] != '$'))
+    if (unlikely(char_idx >= sizeof(sentence_buffer) - 1 ||
+                 sentence_buffer[0] != '$'))
       continue;
 
-    ESP_LOGD(TAG, "Get String:\n%s", cpy);
+    ESP_LOGD(TAG, "Get String:\n%s", sentence_buffer);
 
-    gps_data(nmea_parse(cpy, strlen(cpy), 0), nmea_uart_data);
+    gps_map_to_struct(nmea_parse(sentence_buffer, strlen(sentence_buffer), 0),
+                      p_gps_data);
   }
 }
 
@@ -156,7 +159,7 @@ static void gps_parse(const char *str, nmea_uart_data_s *nmea_uart_data,
  * * @param data Pointer to the custom GPS data structure.
  * @return uint8_t 1 if data is valid, 0 otherwise.
  */
-static inline uint8_t is_gps_data_valid(const nmea_uart_data_s *data) {
+static inline uint8_t is_gps_data_valid(const gps_data_t *data) {
   if (data->n_satellites == 0)
     return 0;
 
@@ -169,31 +172,31 @@ static inline uint8_t is_gps_data_valid(const nmea_uart_data_s *data) {
  * * Reads bytes from the UART port, attempts to parse valid NMEA sentences,
  * and populates the provided structure. It includes a 5-second timeout
  * mechanism if no valid fix is obtained.
- * * @param nmea_uart_data Pointer to the structure where results will be
+ * * @param p_gps_data Pointer to the structure where results will be
  * stored.
  * @return uint8_t
  * - 0: Success (Valid data obtained)
  * - 1: Failure (Timeout or invalid memory)
  */
-uint8_t gps_read_task(nmea_uart_data_s *nmea_uart_data) {
-  uint8_t data[LENGHT_BUFFER];
-  time_t start = time(NULL);
+uint8_t gps_read_uart(gps_data_t *p_gps_data) {
+  uint8_t raw_buffer[LENGHT_BUFFER];
+  time_t start_time = time(NULL);
 
-  if (nmea_uart_data == NULL) {
+  if (p_gps_data == NULL) {
     ESP_LOGE(TAG, "Memory allocation failed");
     return 1;
   }
-  memset(nmea_uart_data, 0, sizeof(nmea_uart_data_s));
+  memset(p_gps_data, 0, sizeof(gps_data_t));
   for (;;) {
-    int len = uart_read_bytes(GPS_UART_PORT, data, LENGHT_BUFFER - 1,
-                              20 / portTICK_PERIOD_MS);
-    if (len > 0) {
-      data[len] = '\0';
-      gps_parse((char *)data, nmea_uart_data, len);
+    int read_len = uart_read_bytes(GPS_UART_PORT, raw_buffer, LENGHT_BUFFER - 1,
+                                   20 / portTICK_PERIOD_MS);
+    if (read_len > 0) {
+      raw_buffer[read_len] = '\0';
+      gps_decode_packet((char *)raw_buffer, p_gps_data, read_len);
 
-      if (!is_gps_data_valid(nmea_uart_data)) {
+      if (!is_gps_data_valid(p_gps_data)) {
         ESP_LOGI(TAG, "Data Not Valid... Try Again");
-        if (difftime(time(NULL), start) > 5) {
+        if (difftime(time(NULL), start_time) > 5) {
           ESP_LOGE(TAG, "GPS Time out!");
           break;
         }
