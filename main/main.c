@@ -191,6 +191,7 @@ void app_main(void) {
   gps_data_t nmea_gps = {0};
   struct json_obj json;
 
+  storage_init_fs();
   led_init();
   hm3301_init_i2c();
   gps_init_uart();
