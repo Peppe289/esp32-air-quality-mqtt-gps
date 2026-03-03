@@ -3,15 +3,9 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-
-#define WIFI_STATE_IDLE          BIT(0)
-#define WIFI_STATE_CONNECTING    BIT(1)
-#define WIFI_STATE_CONNECTED     BIT(2)
-#define WIFI_STATE_DISCONNECTED  BIT(3)
-#define WIFI_STATE_ERROR         BIT(4)
+#include "../../system_event_code.h"
 
 void wifi_init_sta(char *ssid, char *passwd);
-uint8_t get_wifi_status();
 void disableWIFI();
 void wifi_register_system_handler(void (*wifi_state_handler)(uint32_t bit,
                                                              bool add_bit),

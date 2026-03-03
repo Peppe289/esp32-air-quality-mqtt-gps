@@ -3,16 +3,10 @@
 #include "freertos/projdefs.h"
 #include "god_header.h"
 #include <stdint.h>
-
+#include "system_event_code.h"
 
 static const char *TAG = "SYS_MASK";
 static EventGroupHandle_t s_event_group = NULL;
-
-void system_event_mask_init() {
-  if (!s_event_group) {
-    s_event_group = xEventGroupCreate();
-  }
-}
 
 void system_event_mask_callback(uint32_t bit, bool add_bit) {
   if (!s_event_group)
@@ -39,4 +33,12 @@ void system_event_register_handler() {
  REGISTER_MODULE_CALLBACKS(wifi_register_system_handler);
  REGISTER_MODULE_CALLBACKS(storage_register_system_handler);
  REGISTER_MODULE_CALLBACKS(mqtt_register_system_handler);
+}
+
+void system_event_mask_init() {
+  if (!s_event_group) {
+    s_event_group = xEventGroupCreate();
+  }
+
+  system_event_register_handler();
 }

@@ -1,0 +1,23 @@
+#ifndef __SYSTEM_EVENT_CODE_H__
+#define __SYSTEM_EVENT_CODE_H__
+
+#ifndef BIT
+#define BIT(n) (1UL << (n))
+#endif
+
+#define SYSTEM_STATE_NONE BIT(0)
+
+// WIFI event code. 1 - 5
+#define WIFI_SYS_STATUS_ENABLED BIT(1)
+#define WIFI_SYS_STATUS_CONNECTING BIT(2)
+#define WIFI_SYS_STATUS_CONNECTED BIT(3)
+
+// MQTT event code. 6 - 11
+#define MQTT_SYS_STATUS_CONNECTED BIT(4)
+#define MQTT_SYS_STATUS_SUBSCRIBED BIT(5)
+
+// STORAGE event code. 12 - 15
+#define STORAGE_SYS_STATUS_INIZIALIZED BIT(6)
+#define STORAGE_SYS_STATUS_FAILED BIT(7)
+
+#endif // __SYSTEM_EVENT_CODE_H__

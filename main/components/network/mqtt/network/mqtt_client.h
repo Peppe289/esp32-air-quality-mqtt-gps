@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "../../../system_event_code.h"
 
 void mqtt_start_client();
 void mqtt_publish_data_client(const char *p_str);

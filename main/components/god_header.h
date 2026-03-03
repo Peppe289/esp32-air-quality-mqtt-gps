@@ -9,5 +9,6 @@
 #include "storage/include/storage.h"
 
 void system_event_mask_init();
+uint32_t system_event_mask_get(void);
 
 #endif // end __GOD_HEADER_H__

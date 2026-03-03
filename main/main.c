@@ -10,6 +10,7 @@
 #include "nvs_flash.h"
 #include "portmacro.h"
 #include "spi_flash_mmap.h"
+#include "system_event_code.h"
 #include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -141,7 +142,8 @@ void manageConnection(void *args) {
     vTaskDelay(3000 / portTICK_PERIOD_MS);
 
     // If the wifi is connected or not yet all is fine.
-    if (get_wifi_status() & (WIFI_STATE_CONNECTING | WIFI_STATE_CONNECTED))
+    if (system_event_mask_get() &
+        (WIFI_SYS_STATUS_CONNECTING | WIFI_SYS_STATUS_CONNECTED))
       continue;
 
     // If the ssid and password have data, try WIFI connection.
@@ -202,6 +204,30 @@ void app_main(void) {
 
   for (;;) {
     vTaskDelay(pdMS_TO_TICKS(10000));
+
+    uint32_t bitmask = system_event_mask_get();
+
+    if (bitmask & WIFI_SYS_STATUS_CONNECTED) {
+      ESP_LOGI(TAG, "\nWifi connected\n");
+    }
+    if (bitmask & WIFI_SYS_STATUS_CONNECTING) {
+      ESP_LOGI(TAG, "\nWifi connecting\n");
+    }
+    if (bitmask & WIFI_SYS_STATUS_ENABLED) {
+      ESP_LOGI(TAG, "\nWifi enabled\n");
+    }
+    if (bitmask & MQTT_SYS_STATUS_CONNECTED) {
+      ESP_LOGI(TAG, "\nMQTT connected\n");
+    }
+    if (bitmask & MQTT_SYS_STATUS_SUBSCRIBED) {
+      ESP_LOGI(TAG, "\nMQTT subscribed\n");
+    }
+    if (bitmask & STORAGE_SYS_STATUS_FAILED) {
+      ESP_LOGI(TAG, "\nStorage some error\n");
+    }
+    if (bitmask & STORAGE_SYS_STATUS_INIZIALIZED) {
+      ESP_LOGI(TAG, "\nStorage inizialized\n");
+    }
 
     if (hm3301_read_i2c(NULL, &hm3301)) {
       ESP_LOGE(TAG, "Error reading HM3301. Continue...\n");

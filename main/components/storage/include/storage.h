@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "../../system_event_code.h"
 
 void storage_init_fs(void);
 void storage_write_on_file(const char *p_str);

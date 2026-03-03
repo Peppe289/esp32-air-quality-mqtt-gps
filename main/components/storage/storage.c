@@ -35,6 +35,12 @@ void storage_register_system_handler(
   s_storage_event_group.system_get_state = system_get_state;
 }
 
+static void set_storage_status(uint32_t bit, bool add_bit) {
+  if (s_storage_event_group.storage_state_handler) {
+    s_storage_event_group.storage_state_handler(bit, add_bit);
+  }
+}
+
 /**
  * @brief Initializes the SPIFFS filesystem.
  * * Registers the Virtual File System (VFS) and mounts the partition.
@@ -48,6 +54,7 @@ void storage_init_fs() {
 
   switch (ret) {
   case ESP_OK:
+    set_storage_status(STORAGE_SYS_STATUS_INIZIALIZED, true);
     ESP_LOGI(TAG, "Inizialized SPIFFS successful");
     break;
   case ESP_FAIL:
@@ -86,7 +93,9 @@ static void storage_close_file(FILE *s_file) {
 }
 
 static uint8_t storage_is_mounted() {
-  return esp_spiffs_mounted(s_spiffs_conf.partition_label);
+  uint8_t ret = esp_spiffs_mounted(s_spiffs_conf.partition_label);
+  set_storage_status(STORAGE_SYS_STATUS_FAILED, !ret);
+  return ret;
 }
 
 /**
