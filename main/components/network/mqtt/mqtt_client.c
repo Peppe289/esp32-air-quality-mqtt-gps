@@ -89,7 +89,8 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base,
   switch ((esp_mqtt_event_id_t)event_id) {
   case MQTT_EVENT_CONNECTED:
     set_mqtt_status(MQTT_SYS_STATUS_CONNECTED, true);
-    esp_mqtt_client_subscribe(event->client, "/topic/qos0", 0);
+    esp_mqtt_client_subscribe(event->client, MQTT_MAIN_TOPIC, 0);
+    esp_mqtt_client_subscribe(event->client, MQTT_RECOVERY_TOPIC, 0);
     break;
   case MQTT_EVENT_DISCONNECTED:
     set_mqtt_status(MQTT_SYS_STATUS_CONNECTED, false);
@@ -111,13 +112,13 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base,
   }
 }
 
-void mqtt_publish_data_client(const char *p_str) {
+void mqtt_publish_data_client(const char *p_str, const char *p_topic) {
   // Skip push if:
   // - not able to get system status.
   // - wifi isn't connected.
   if (s_mqtt_client && s_mqtt_event_group.system_get_state &&
       (s_mqtt_event_group.system_get_state() & WIFI_SYS_STATUS_CONNECTED))
-    esp_mqtt_client_publish(s_mqtt_client, "/topic/qos0", p_str, 0, 0, 0);
+    esp_mqtt_client_publish(s_mqtt_client, p_topic, p_str, 0, 0, 0);
 }
 
 void mqtt_start_client(void) {

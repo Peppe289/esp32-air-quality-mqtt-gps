@@ -68,6 +68,8 @@ void storage_init_fs() {
   }
 }
 
+#include "errno.h"
+
 /**
  * @brief Internal helper to open a file with error handling.
  * * @param type_file_mode The file access mode (e.g., "a", "r", "w").
@@ -77,7 +79,8 @@ static FILE *storage_open_file(const char *type_file_mode) {
   FILE *s_file;
   s_file = fopen(s_file_path, type_file_mode);
   if (!s_file) {
-    ESP_LOGE(TAG, "Failed to open file for writing");
+    ESP_LOGE(TAG, "Failed to open file for %s", type_file_mode);
+    ESP_LOGE(TAG, "Failed to open file! Error: %s (Code %d)", strerror(errno), errno);
     return NULL;
   }
   return s_file;
@@ -131,11 +134,18 @@ void storage_write_on_file(const char *p_str) {
  * to delete it (unlink).
  */
 static void storage_remove_file() {
-  struct stat st;
   // check if file exist.
-  if (!stat(s_file_path, &st)) {
+  if (storage_have_file()) {
     unlink(s_file_path);
   }
+}
+
+/**
+ * Check if file exist.
+ */
+uint8_t storage_have_file() {
+  struct stat st;
+  return !stat(s_file_path, &st);
 }
 
 /**
@@ -148,9 +158,11 @@ static void storage_remove_file() {
  * @warning Ensure the internal line buffer is large enough for the
  * longest expected JSON string.
  */
-void storage_recovery_data(void (*mqtt_callback)(const char *p_json)) {
+void storage_recovery_data(uint8_t (*mqtt_callback)(const char *p_json,
+                                                    const char *p_topic)) {
   char jsonl[512] = {0};
   FILE *s_file;
+  static long last_position = 0;
 
   ESP_LOGI(TAG, "Starting data recovery from %s", s_file_path);
 
@@ -162,6 +174,10 @@ void storage_recovery_data(void (*mqtt_callback)(const char *p_json)) {
   if (!(s_file = storage_open_file("r")))
     return;
 
+  if (last_position) {
+    fseek(s_file, last_position, SEEK_SET);
+  }
+
   while (fgets(jsonl, sizeof(jsonl), s_file) != NULL) {
 
     if (jsonl[0] == '\n')
@@ -169,11 +185,21 @@ void storage_recovery_data(void (*mqtt_callback)(const char *p_json)) {
 
     jsonl[strcspn(jsonl, "\r\n")] = 0;
 
-    if (jsonl[0] != '\0')
-      mqtt_callback(jsonl);
+    if (jsonl[0] != '\0') {
+      // p_topic = NULL is useless. mqtt_callback call a wrapper which use
+      // MQTT_RECOVERY_TOPIC as parameter
+      if (mqtt_callback(jsonl, NULL)) {
+        storage_close_file(s_file);
+        return;
+      } else {
+        last_position = ftell(s_file);
+      }
+    }
 
     memset(jsonl, 0, sizeof(jsonl));
   }
+
+  last_position = 0;
 
   storage_close_file(s_file);
   storage_remove_file();

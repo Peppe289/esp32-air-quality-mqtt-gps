@@ -6,8 +6,9 @@
 #include "../../system_event_code.h"
 
 void storage_init_fs(void);
+uint8_t storage_have_file();
 void storage_write_on_file(const char *p_str);
-void storage_recovery_data(void (*mqtt_callback)(const char *p_json));
+void storage_recovery_data(uint8_t (*mqtt_callback)(const char *p_json, const char *p_topic));
 void storage_register_system_handler(
     void (*storage_state_handler)(uint32_t bit, bool add_bit),
     uint32_t (*system_get_state)(void));
