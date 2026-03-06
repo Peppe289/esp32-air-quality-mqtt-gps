@@ -1,6 +1,5 @@
 #include "cJSON.h"
 #include "components/god_header.h"
-#include "driver/gpio.h"
 #include "esp_log.h"
 #include "esp_system.h"
 #include "freertos/FreeRTOS.h"
@@ -21,10 +20,6 @@
 #include <unistd.h>
 
 static const char *TAG = "MAIN";
-
-/* LED configuration */
-#define LED_GREEN_GPIO 3
-#define LED_RED_GPIO 4
 
 struct json_obj {
   char *unformatted;
@@ -95,26 +90,6 @@ serialize_data_to_json_string(gps_data_t *p_gps_data,
 }
 
 /**
- * @brief Initializes onboard status LEDs.
- * * Sets Red LED as Power/Status indicator and Green LED for
- * Connectivity/Activity.
- */
-static void led_init(void) {
-  // Initialize Green LED (GPIO2) - OFF initially
-  gpio_reset_pin(LED_GREEN_GPIO);
-  gpio_set_direction(LED_GREEN_GPIO, GPIO_MODE_OUTPUT);
-  gpio_set_level(LED_GREEN_GPIO, 0); // Turn off green LED at startup
-
-  // Initialize Red LED (GPIO4) - ON at power on
-  gpio_reset_pin(LED_RED_GPIO);
-  gpio_set_direction(LED_RED_GPIO, GPIO_MODE_OUTPUT);
-  gpio_set_level(LED_RED_GPIO, 1); // Turn on red LED at startup
-
-  ESP_LOGI(TAG, "LEDs initialized: Green=GPIO%d (OFF), Red=GPIO%d (ON)",
-           LED_GREEN_GPIO, LED_RED_GPIO);
-}
-
-/**
  * @brief Callback function for MQTT data recovery.
  * * This function is passed to the storage recovery engine to handle the
  * re-transmission of stored JSON strings. It verifies the current system
@@ -170,20 +145,35 @@ void fs_recovery_json_task(void *args) {
   }
 }
 
+/**
+ * * @param gps_success is a boolean indicate if GPS fail or success
+ */
+void gps_led_callback(uint8_t gps_success) {
+  if (gps_success)
+    led_set_green();
+  else
+    led_set_red();
+}
+
 void app_main(void) {
   hm3301_data_t hm3301 = {0};
   gps_data_t nmea_gps = {0};
   struct json_obj json;
 
+  led_init();
+  led_blink_all();
+
   system_event_mask_init();
   storage_init_fs();
-  led_init();
   hm3301_init_i2c();
   gps_init_uart();
   wifi_init_sta();
   xTaskCreate(fs_recovery_json_task, "fs_listener", 4096, NULL, 5, NULL);
 
   vTaskDelay(pdMS_TO_TICKS(1000));
+  led_set_red();
+
+  gps_set_handler(gps_led_callback);
 
   for (;;) {
     vTaskDelay(pdMS_TO_TICKS(10000));

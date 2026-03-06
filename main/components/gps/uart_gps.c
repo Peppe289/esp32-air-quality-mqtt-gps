@@ -26,6 +26,12 @@
 #define GPS_BAUD_RATE 9600
 #define LENGHT_BUFFER 200
 
+typedef struct {
+  void (*gps_notify_led)(uint8_t );
+} gps_callbacks_t;
+
+static gps_callbacks_t s_gps_callbacks = {NULL};
+
 static const char *TAG = "GPS";
 
 static const uart_config_t s_uart_config = {
@@ -36,6 +42,13 @@ static const uart_config_t s_uart_config = {
     .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
     .source_clk = UART_SCLK_DEFAULT,
 };
+
+/**
+ * Register handler
+ */
+void gps_set_handler(void (*handler)(uint8_t)) {
+  s_gps_callbacks.gps_notify_led = handler;
+}
 
 /**
  * @brief Initializes the GPS UART interface.
@@ -198,9 +211,11 @@ uint8_t gps_read_uart(gps_data_t *p_gps_data) {
         ESP_LOGI(TAG, "Data Not Valid... Try Again");
         if (difftime(time(NULL), start_time) > 5) {
           ESP_LOGE(TAG, "GPS Time out!");
+          s_gps_callbacks.gps_notify_led(0);
           break;
         }
       } else {
+        s_gps_callbacks.gps_notify_led(1);
         return 0;
       }
     }
