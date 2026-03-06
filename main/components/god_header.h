@@ -6,6 +6,7 @@
 #include "network/wifi/wifi_conn.h"
 #include "pm_sensors/i2c_hm3301.h"
 #include "storage/include/storage.h"
+#include "led.h"
 
 void system_event_mask_init();
 uint32_t system_event_mask_get(void);
