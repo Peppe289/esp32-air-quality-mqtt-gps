@@ -5,8 +5,7 @@
 #include <stdint.h>
 #include "../../system_event_code.h"
 
-void wifi_init_sta(char *ssid, char *passwd);
-void disableWIFI();
+void wifi_init_sta(void);
 void wifi_register_system_handler(void (*wifi_state_handler)(uint32_t bit,
                                                              bool add_bit),
                                   uint32_t (*system_get_state)(void));

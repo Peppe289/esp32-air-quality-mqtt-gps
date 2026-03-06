@@ -15,7 +15,8 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "ble_gatts.h"
+#include "nvs_flash.h"
+
 #include "wifi_conn.h"
 
 #include "../mqtt/network/mqtt_client.h"
@@ -23,13 +24,14 @@
 
 #define ESP_MAXIMUM_RETRY 2
 
+static const char *TAG = "WIFI";
+
 typedef struct wifi_callbacks_t {
   void (*wifi_state_handler)(uint32_t bit, bool add_bit);
   uint32_t (*system_get_state)(void);
 } wifi_callbacks_t;
 
 wifi_callbacks_t s_wifi_event_group = {NULL, NULL};
-static int s_retry_num = 0;
 static esp_netif_t *netif = NULL;
 
 static esp_event_handler_instance_t instance_any_id;
@@ -48,16 +50,10 @@ static void event_handler(void *arg, esp_event_base_t event_base,
     esp_wifi_connect();
   } else if (event_base == WIFI_EVENT &&
              event_id == WIFI_EVENT_STA_DISCONNECTED) {
-    if (s_retry_num < ESP_MAXIMUM_RETRY) {
-      esp_wifi_connect();
-      s_retry_num++;
-    } else {
-      set_wifi_status(WIFI_SYS_STATUS_CONNECTING, false);
-      set_wifi_status(WIFI_SYS_STATUS_CONNECTED, false);
-      s_retry_num = 0;
-    }
+    esp_wifi_connect();
+    set_wifi_status(WIFI_SYS_STATUS_CONNECTING, false);
+    set_wifi_status(WIFI_SYS_STATUS_CONNECTED, false);
   } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
-    s_retry_num = 0;
     // remove connecting status and add connected status.
     set_wifi_status(WIFI_SYS_STATUS_CONNECTING, false);
     set_wifi_status(WIFI_SYS_STATUS_CONNECTED, true);
@@ -65,41 +61,20 @@ static void event_handler(void *arg, esp_event_base_t event_base,
   }
 }
 
-void disableWIFI() {
-  set_wifi_status(WIFI_SYS_STATUS_ENABLED, false);
-  set_wifi_status(WIFI_SYS_STATUS_CONNECTING, false);
-  set_wifi_status(WIFI_SYS_STATUS_CONNECTED, false);
+void wifi_init_sta() {
+  esp_err_t ret;
 
-  if (instance_any_id) {
-    esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID,
-                                          instance_any_id);
-    instance_any_id = NULL;
+  // Initialize NVS.
+  ret = nvs_flash_init();
+  if (ret == ESP_ERR_NVS_NO_FREE_PAGES ||
+      ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+    ESP_ERROR_CHECK(nvs_flash_erase());
+    ret = nvs_flash_init();
   }
+  ESP_ERROR_CHECK(ret);
 
-  if (instance_got_ip) {
-    esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP,
-                                          instance_got_ip);
-    instance_got_ip = NULL;
-  }
-
-  esp_wifi_stop();
-  esp_wifi_deinit();
-
-  if (netif) {
-    esp_netif_destroy_default_wifi(netif);
-    netif = NULL;
-  }
-}
-
-static uint8_t s_logic_initialized = 0;
-
-void wifi_init_sta(char *_ssid, char *passwd) {
-
-  if (!s_logic_initialized) {
-    ESP_ERROR_CHECK(esp_netif_init());
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
-    s_logic_initialized = true;
-  }
+  ESP_ERROR_CHECK(esp_netif_init());
+  ESP_ERROR_CHECK(esp_event_loop_create_default());
 
   if (netif == NULL) {
     netif = esp_netif_create_default_wifi_sta();
@@ -117,12 +92,14 @@ void wifi_init_sta(char *_ssid, char *passwd) {
       .sta.threshold.authmode = WIFI_AUTH_WPA_WPA2_PSK,
   };
 
-  strncpy((char *)wifi_config.sta.ssid, _ssid,
+  strncpy((char *)wifi_config.sta.ssid, WIFI_SSID,
           sizeof(wifi_config.sta.ssid) - 1);
   wifi_config.sta.ssid[sizeof(wifi_config.sta.ssid) - 1] = '\0';
-  strncpy((char *)wifi_config.sta.password, passwd,
+  strncpy((char *)wifi_config.sta.password, WIFI_PASSWD,
           sizeof(wifi_config.sta.password) - 1);
   wifi_config.sta.password[sizeof(wifi_config.sta.password) - 1] = '\0';
+
+  ESP_LOGI(TAG, "Try to connect %s WIFI", wifi_config.sta.ssid);
 
   set_wifi_status(WIFI_SYS_STATUS_ENABLED, true);
   ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
