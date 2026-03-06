@@ -21,16 +21,6 @@
 #define MQTT_PORT 8883
 #endif
 
-#ifndef MQTT_USERNAME
-#warning "Missing MQTT_USERNAME env variable. Using default."
-#define MQTT_USERNAME "guest"
-#endif
-
-#ifndef MQTT_PASSWORD
-#warning "Missing MQTT_PASSWORD env variable. Using default."
-#define MQTT_PASSWORD "1234"
-#endif
-
 typedef struct mqtt_callbacks_t {
   void (*mqtt_state_handler)(uint32_t bit, bool add_bit);
   uint32_t (*system_get_state)(void);
@@ -43,7 +33,7 @@ static const esp_mqtt_client_config_t s_mqtt_cfg = {
         {
             .address =
                 {
-                    .transport = MQTT_TRANSPORT_OVER_SSL,
+                    .transport = MQTT_TRANSPORT_OVER_WS,
                     .hostname = MQTT_BROKER,
                     .port = MQTT_PORT,
                 },
@@ -60,10 +50,14 @@ static const esp_mqtt_client_config_t s_mqtt_cfg = {
         },
     .credentials =
         {
+#ifdef MQTT_USERNAME
             .username = MQTT_USERNAME,
+#endif
             .authentication =
                 {
+#ifdef MQTT_PASSWORD
                     .password = MQTT_PASSWORD,
+#endif
                     .certificate = NULL,
                     .certificate_len = 0,
                 },
