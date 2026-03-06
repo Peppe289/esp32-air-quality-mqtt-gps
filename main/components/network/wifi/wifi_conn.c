@@ -61,6 +61,16 @@ static void event_handler(void *arg, esp_event_base_t event_base,
   }
 }
 
+#ifndef WIFI_SSID
+# warning "You don't put WIFI ssid. This build is only for CI"
+#define WIFI_SSID "CI WIFI"
+#endif
+
+#ifndef WIFI_PASSWD
+# warning "You don't put wifi passwd. This build is only for CI"
+#define WIFI_PASSWD "testing purpose only"
+#endif
+
 void wifi_init_sta() {
   esp_err_t ret;
 
