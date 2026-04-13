@@ -10,6 +10,16 @@
 #### GPS Functionality:
 To convert RAW GPS data into a readable format, use the `igrr/libnmea` component.
 
+### LED Status Legend
+
+| Status                      | LED Behavior           | Description |
+|---------------------------|----------------------|-------------|
+| 🔴 Critical Error          | Fast red blinking     | HM3301 not initialized, or GPS not initialized, or storage failure. *The system cannot operate correctly.* |
+| 🟢 Normal Operation        | Solid green           | HM3301 initialized, GPS fix acquired, MQTT connected. System is fully operational and transmitting data. |
+| 🟢 MQTT Disconnected       | Fast green blinking   | HM3301 initialized, GPS fix acquired, MQTT not connected. Data is not being sent to the server. |
+| 🟢 Wi-Fi Disconnected      | Slow green blinking   | HM3301 initialized, GPS fix acquired, Wi-Fi not connected. |
+| 🔴 Warning / Fallback State| Slow red blinking     | System is in an unexpected or partially working state. |
+
 # Logbook:
 
 This repository is part of my **internship** project where I am working with an **ESP32** and various sensors like the **GPS** and **PM2.5 sensor (HM3301)**. The purpose of this project is to implement a real-time system for data collection and processing from multiple devices. Below are some key learnings and challenges I have encountered so far:
