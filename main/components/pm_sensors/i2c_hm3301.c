@@ -8,8 +8,16 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include "system_event_code.h"
 
 #include "i2c_hm3301.h"
+
+typedef struct hm3301_callbacks_t {
+  void (*hm3301_state_handler)(uint32_t bit, bool add_bit);
+  uint32_t (*system_get_state)(void);
+} hm3301_callbacks_t;
+
+static hm3301_callbacks_t s_hm3301_callbacks = {NULL, NULL};
 
 static i2c_master_dev_handle_t dev_handle;
 static i2c_master_bus_handle_t bus_handle;
@@ -32,6 +40,19 @@ static bool hm3301_verify_checksum(uint8_t *p_raw_buffer) {
     sum += p_raw_buffer[i];
   }
   return ((uint8_t)(sum & 0xFF)) == p_raw_buffer[HM3301_FRAME_LENGTH - 1];
+}
+
+void hm3301_register_system_handler(void (*hm3301_state_handler)(uint32_t bit,
+                                                                   bool add_bit),
+                                      uint32_t (*system_get_state)(void)) {
+  s_hm3301_callbacks.hm3301_state_handler = hm3301_state_handler;
+  s_hm3301_callbacks.system_get_state = system_get_state;
+}
+
+static inline void set_hm3301_status(uint32_t bit, bool add_bit) {
+  if (s_hm3301_callbacks.hm3301_state_handler) {
+    s_hm3301_callbacks.hm3301_state_handler(bit, add_bit);
+  }
 }
 
 /**
@@ -124,6 +145,7 @@ void hm3301_init_i2c() {
     ESP_LOGE(TAG, "Sensor not found on 0x%02x address!.", HM3301_I2C_ADDRESS);
   } else {
     ESP_LOGI(TAG, "Found HM3301.");
+    set_hm3301_status(I2C_HM3301_SYS_STATUS_INITIALIZED, true);
   }
 
   ESP_LOGI(TAG, "Wait for the sensor to stabilize...");

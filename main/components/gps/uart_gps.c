@@ -19,6 +19,7 @@
 #include "nmea.h"
 
 #include "uart_gps.h"
+#include "system_event_code.h"
 
 #define GPS_TXD 21
 #define GPS_RXD 20
@@ -26,11 +27,12 @@
 #define GPS_BAUD_RATE 9600
 #define LENGHT_BUFFER 200
 
-typedef struct {
-  void (*gps_notify_led)(uint8_t );
+typedef struct gps_callbacks_t {
+  void (*gps_state_handler)(uint32_t bit, bool add_bit);
+  uint32_t (*system_get_state)(void);
 } gps_callbacks_t;
 
-static gps_callbacks_t s_gps_callbacks = {NULL};
+static gps_callbacks_t s_gps_callbacks = {NULL, NULL};
 
 static const char *TAG = "GPS";
 
@@ -46,8 +48,17 @@ static const uart_config_t s_uart_config = {
 /**
  * Register handler
  */
-void gps_set_handler(void (*handler)(uint8_t)) {
-  s_gps_callbacks.gps_notify_led = handler;
+void gps_register_system_handler(void (*gps_state_handler)(uint32_t bit,
+                                                             bool add_bit),
+                                  uint32_t (*system_get_state)(void)) {
+  s_gps_callbacks.gps_state_handler = gps_state_handler;
+  s_gps_callbacks.system_get_state = system_get_state;
+}
+
+static inline void set_gps_status(uint32_t bit, bool add_bit) {
+  if (s_gps_callbacks.gps_state_handler) {
+    s_gps_callbacks.gps_state_handler(bit, add_bit);
+  }
 }
 
 /**
@@ -60,6 +71,8 @@ void gps_init_uart(void) {
   uart_param_config(GPS_UART_PORT, &s_uart_config);
   uart_set_pin(GPS_UART_PORT, GPS_TXD, GPS_RXD, UART_PIN_NO_CHANGE,
                UART_PIN_NO_CHANGE);
+
+  set_gps_status(UART_GPS_SYS_STATUS_INITIALIZED, true);
 }
 
 /**
@@ -211,11 +224,11 @@ uint8_t gps_read_uart(gps_data_t *p_gps_data) {
         ESP_LOGI(TAG, "Data Not Valid... Try Again");
         if (difftime(time(NULL), start_time) > 5) {
           ESP_LOGE(TAG, "GPS Time out!");
-          s_gps_callbacks.gps_notify_led(0);
+          set_gps_status(UART_GPS_SYS_FIXED, false);
           break;
         }
       } else {
-        s_gps_callbacks.gps_notify_led(1);
+        set_gps_status(UART_GPS_SYS_FIXED, true);
         return 0;
       }
     }

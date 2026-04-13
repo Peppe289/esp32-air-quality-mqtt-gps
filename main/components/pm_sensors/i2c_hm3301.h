@@ -2,6 +2,7 @@
 #define __I2C_HM3301_H__
 
 #include <stdint.h>
+#include <stdbool.h>
 
 typedef struct hm3301_data_s {
   uint16_t pm1_0;
@@ -33,5 +34,8 @@ typedef struct hm3301_data_s {
 
 void hm3301_init_i2c();
 uint8_t hm3301_read_i2c(uint8_t *raw_data, hm3301_data_t *hm3301);
+void hm3301_register_system_handler(void (*hm3301_state_handler)(uint32_t bit,
+                                                                   bool add_bit),
+                                      uint32_t (*system_get_state)(void));
 
 #endif

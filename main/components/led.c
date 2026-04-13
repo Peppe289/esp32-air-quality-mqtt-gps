@@ -10,6 +10,11 @@
 static TaskHandle_t s_xHandle_blinking = NULL;
 static const char *TAG = "LED";
 
+typedef struct {
+  uint32_t GPIO_num;
+  uint32_t delay_ms;
+} led_blink_config_t;
+
 /**
  * @brief Initializes onboard status LEDs.
  * * Sets Red LED as Power/Status indicator and Green LED for
@@ -46,48 +51,79 @@ void led_set_green() {
 }
 
 static void led_blink_task(void *args) {
+  led_blink_config_t *config = (led_blink_config_t *)args;
+
   gpio_set_level(LED_RED_GPIO, 0);
   gpio_set_level(LED_GREEN_GPIO, 0);
 
   for (;;) {
-    gpio_set_level(((uint32_t)args), 1);
-    vTaskDelay(pdMS_TO_TICKS(500));
-    gpio_set_level(((uint32_t)args), 0);
-    vTaskDelay(pdMS_TO_TICKS(500));
+    gpio_set_level(((uint32_t)config->GPIO_num), 1);
+    vTaskDelay(pdMS_TO_TICKS(config->delay_ms));
+    gpio_set_level(((uint32_t)config->GPIO_num), 0);
+    vTaskDelay(pdMS_TO_TICKS(config->delay_ms));
   }
 }
 
-static void led_blink_all_task() {
+static void led_blink_all_task(void *args) {
+  led_blink_config_t *config = (led_blink_config_t *)args;
+
   gpio_set_level(LED_RED_GPIO, 0);
   gpio_set_level(LED_GREEN_GPIO, 0);
 
   for (;;) {
     gpio_set_level(LED_RED_GPIO, 0);
     gpio_set_level(LED_GREEN_GPIO, 1);
-    vTaskDelay(pdMS_TO_TICKS(500));
+    vTaskDelay(pdMS_TO_TICKS(config->delay_ms));
     gpio_set_level(LED_GREEN_GPIO, 0);
     gpio_set_level(LED_RED_GPIO, 1);
-    vTaskDelay(pdMS_TO_TICKS(500));
+    vTaskDelay(pdMS_TO_TICKS(config->delay_ms));
   }
 }
 
 void led_blink_all() {
-  led_blink_reset();
+  static const led_blink_config_t config = {0, 500};
 
-  xTaskCreate(led_blink_all_task, "led_blinking", 4096, (void *)LED_RED_GPIO, 2,
+  led_blink_reset();
+  xTaskCreate(led_blink_all_task, "led_blinking", 4096, (void *)&config, 2,
+              &s_xHandle_blinking);
+}
+
+void led_blink_all_fast() {
+  static const led_blink_config_t config = {0, 200};
+
+  led_blink_reset();
+  xTaskCreate(led_blink_all_task, "led_blinking", 4096, (void *)&config, 2,
+              &s_xHandle_blinking);
+}
+
+void led_red_blink_fast() {
+  static const led_blink_config_t config = {LED_RED_GPIO, 200};
+
+  led_blink_reset();
+  xTaskCreate(led_blink_task, "led_blinking", 4096, (void *)&config, 2,
+              &s_xHandle_blinking);
+}
+
+void led_green_blink_fast() {
+  static const led_blink_config_t config = {LED_GREEN_GPIO, 200};
+
+  led_blink_reset();
+  xTaskCreate(led_blink_task, "led_blinking", 4096, (void *)&config, 2,
               &s_xHandle_blinking);
 }
 
 void led_red_blink() {
-  led_blink_reset();
+  static const led_blink_config_t config = {LED_RED_GPIO, 500};
 
-  xTaskCreate(led_blink_task, "led_blinking", 4096, (void *)LED_RED_GPIO, 2,
+  led_blink_reset();
+  xTaskCreate(led_blink_task, "led_blinking", 4096, (void *)&config, 2,
               &s_xHandle_blinking);
 }
 
 void led_green_blink() {
-  led_blink_reset();
+  static const led_blink_config_t config = {LED_GREEN_GPIO, 500};
 
-  xTaskCreate(led_blink_task, "led_blinking", 4096, (void *)LED_GREEN_GPIO, 2,
+  led_blink_reset();
+  xTaskCreate(led_blink_task, "led_blinking", 4096, (void *)&config, 2,
               &s_xHandle_blinking);
 }

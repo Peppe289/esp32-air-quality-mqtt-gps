@@ -16,6 +16,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/types.h>
 #include <sys/unistd.h>
 #include <unistd.h>
 
@@ -145,14 +146,31 @@ void fs_recovery_json_task(void *args) {
   }
 }
 
-/**
- * * @param gps_success is a boolean indicate if GPS fail or success
- */
-void gps_led_callback(uint8_t gps_success) {
-  if (gps_success)
-    led_set_green();
-  else
-    led_set_red();
+static void system_led_notify(uint32_t bitmask) {
+
+  if (!(bitmask & I2C_HM3301_SYS_STATUS_INITIALIZED) ||
+      !(bitmask & UART_GPS_SYS_STATUS_INITIALIZED) || (bitmask & STORAGE_SYS_STATUS_FAILED)) {
+    led_red_blink_fast(); // CRITICAL ERROR: HM3301 or GPS not initialized
+    return;
+  }
+
+  if (bitmask & I2C_HM3301_SYS_STATUS_INITIALIZED) {
+    if (bitmask & UART_GPS_SYS_FIXED) {
+      if (bitmask & MQTT_SYS_STATUS_CONNECTED) {
+        led_set_green(); // all work
+        return;
+      } else {
+        led_green_blink_fast(); // GPS OK, but MQTT not connected
+        return;
+      }
+      if (!(bitmask & WIFI_SYS_STATUS_CONNECTED)) {
+        led_green_blink(); // WIFI not connected
+        return;
+      }
+    }
+  }
+
+  led_red_blink(); // default: something is wrong, but not critical
 }
 
 void app_main(void) {
@@ -173,16 +191,15 @@ void app_main(void) {
   vTaskDelay(pdMS_TO_TICKS(1000));
   led_set_red();
 
-  gps_set_handler(gps_led_callback);
-
   for (;;) {
-    vTaskDelay(pdMS_TO_TICKS(10000));
-
     uint32_t bitmask = system_event_mask_get();
     char bitmask_str[256];
 
+    system_led_notify(bitmask);
     system_event_mask_code_str(bitmask, bitmask_str, sizeof(bitmask_str));
     ESP_LOGI(TAG, "Current system status:\n%s", bitmask_str);
+
+    vTaskDelay(pdMS_TO_TICKS(10000));
 
     if (hm3301_read_i2c(NULL, &hm3301)) {
       ESP_LOGE(TAG, "Error reading HM3301. Continue...\n");

@@ -21,7 +21,9 @@ typedef struct gps_data_s {
   struct tm time;
 } gps_data_t;
 
-void gps_set_handler(void (*handler)(uint8_t));
+void gps_register_system_handler(void (*gps_state_handler)(uint32_t bit,
+                                                             bool add_bit),
+                                  uint32_t (*system_get_state)(void));
 void gps_init_uart(void);
 uint8_t gps_read_uart(gps_data_t *);
 

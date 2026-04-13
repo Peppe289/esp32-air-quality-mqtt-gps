@@ -2,6 +2,7 @@
 #include "freertos/idf_additions.h"
 #include "freertos/projdefs.h"
 #include "god_header.h"
+#include "i2c_hm3301.h"
 #include "system_event_code.h"
 #include <stdint.h>
 
@@ -43,6 +44,9 @@ void system_event_mask_code_str(uint32_t bitmask, char *buffer,
       {MQTT_SYS_STATUS_SUBSCRIBED, "MQTT_SYS_STATUS_SUBSCRIBED"},
       {STORAGE_SYS_STATUS_FAILED, "STORAGE_SYS_STATUS_FAILED"},
       {STORAGE_SYS_STATUS_INIZIALIZED, "STORAGE_SYS_STATUS_INIZIALIZED"},
+      {I2C_HM3301_SYS_STATUS_INITIALIZED, "I2C_HM3301_SYS_STATUS_INITIALIZED"},
+      {UART_GPS_SYS_STATUS_INITIALIZED, "UART_GPS_SYS_STATUS_INITIALIZED"},
+      {UART_GPS_SYS_FIXED, "UART_GPS_SYS_FIXED"},
   };
 
   buffer[0] = '\0'; // reset buffer
@@ -71,6 +75,8 @@ void system_event_register_handler() {
   REGISTER_MODULE_CALLBACKS(wifi_register_system_handler);
   REGISTER_MODULE_CALLBACKS(storage_register_system_handler);
   REGISTER_MODULE_CALLBACKS(mqtt_register_system_handler);
+  REGISTER_MODULE_CALLBACKS(gps_register_system_handler);
+  REGISTER_MODULE_CALLBACKS(hm3301_register_system_handler);
 }
 
 void system_event_mask_init() {
