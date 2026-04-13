@@ -10,6 +10,9 @@
 static TaskHandle_t s_xHandle_blinking = NULL;
 static const char *TAG = "LED";
 
+#define LED_BLINK_LOW_SPEED 1000
+#define LED_BLINK_FAST_SPEED 200
+
 typedef struct {
   uint32_t GPIO_num;
   uint32_t delay_ms;
@@ -81,7 +84,7 @@ static void led_blink_all_task(void *args) {
 }
 
 void led_blink_all() {
-  static const led_blink_config_t config = {0, 500};
+  static const led_blink_config_t config = {0, LED_BLINK_LOW_SPEED};
 
   led_blink_reset();
   xTaskCreate(led_blink_all_task, "led_blinking", 4096, (void *)&config, 2,
@@ -89,7 +92,7 @@ void led_blink_all() {
 }
 
 void led_blink_all_fast() {
-  static const led_blink_config_t config = {0, 200};
+  static const led_blink_config_t config = {0, LED_BLINK_FAST_SPEED};
 
   led_blink_reset();
   xTaskCreate(led_blink_all_task, "led_blinking", 4096, (void *)&config, 2,
@@ -97,7 +100,7 @@ void led_blink_all_fast() {
 }
 
 void led_red_blink_fast() {
-  static const led_blink_config_t config = {LED_RED_GPIO, 200};
+  static const led_blink_config_t config = {LED_RED_GPIO, LED_BLINK_FAST_SPEED};
 
   led_blink_reset();
   xTaskCreate(led_blink_task, "led_blinking", 4096, (void *)&config, 2,
@@ -105,7 +108,7 @@ void led_red_blink_fast() {
 }
 
 void led_green_blink_fast() {
-  static const led_blink_config_t config = {LED_GREEN_GPIO, 200};
+  static const led_blink_config_t config = {LED_GREEN_GPIO, LED_BLINK_FAST_SPEED};
 
   led_blink_reset();
   xTaskCreate(led_blink_task, "led_blinking", 4096, (void *)&config, 2,
@@ -113,7 +116,7 @@ void led_green_blink_fast() {
 }
 
 void led_red_blink() {
-  static const led_blink_config_t config = {LED_RED_GPIO, 500};
+  static const led_blink_config_t config = {LED_RED_GPIO, LED_BLINK_LOW_SPEED};
 
   led_blink_reset();
   xTaskCreate(led_blink_task, "led_blinking", 4096, (void *)&config, 2,
@@ -121,7 +124,7 @@ void led_red_blink() {
 }
 
 void led_green_blink() {
-  static const led_blink_config_t config = {LED_GREEN_GPIO, 500};
+  static const led_blink_config_t config = {LED_GREEN_GPIO, LED_BLINK_LOW_SPEED};
 
   led_blink_reset();
   xTaskCreate(led_blink_task, "led_blinking", 4096, (void *)&config, 2,
