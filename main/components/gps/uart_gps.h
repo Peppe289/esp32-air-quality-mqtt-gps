@@ -19,6 +19,7 @@ typedef struct gps_data_s {
     nmea_position latitude;
   } position;
   struct tm time;
+  uint8_t valid; // 1 if data is valid, 0 otherwise
 } gps_data_t;
 
 void gps_register_system_handler(void (*gps_state_handler)(uint32_t bit,

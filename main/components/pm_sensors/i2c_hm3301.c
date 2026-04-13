@@ -74,6 +74,7 @@ uint8_t hm3301_read_i2c(uint8_t *p_opt_raw_buffer,
   const uint8_t trigger_cmd = HM3301_READ_COMMAND;
   esp_err_t err;
 
+  p_hm3301_data->valid = 0; // Set to invalid by default. Will be set to valid if read is successful and checksum passes.
   // Send command code to read (0x88) then read (29 byte)
   err = i2c_master_transmit_receive(dev_handle, &trigger_cmd, 1, read_buffer,
                                     HM3301_FRAME_LENGTH, 1000 / portTICK_PERIOD_MS);
@@ -99,6 +100,7 @@ uint8_t hm3301_read_i2c(uint8_t *p_opt_raw_buffer,
   p_hm3301_data->pm1_0 = HM3301_GET_PM1_0(read_buffer);
   p_hm3301_data->pm2_5 = HM3301_GET_PM2_5(read_buffer);
   p_hm3301_data->pm10 = HM3301_GET_PM10(read_buffer);
+  p_hm3301_data->valid = 1;
 
   return 0;
 }

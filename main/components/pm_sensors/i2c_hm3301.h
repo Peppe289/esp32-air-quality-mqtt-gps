@@ -8,6 +8,7 @@ typedef struct hm3301_data_s {
   uint16_t pm1_0;
   uint16_t pm2_5;
   uint16_t pm10;
+  uint8_t valid; // 1 if data is valid, 0 otherwise
 } hm3301_data_t;
 
 /* --- I2C Protocol Definitions --- */

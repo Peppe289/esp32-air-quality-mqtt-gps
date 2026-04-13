@@ -208,6 +208,7 @@ uint8_t gps_read_uart(gps_data_t *p_gps_data) {
   uint8_t raw_buffer[LENGHT_BUFFER];
   time_t start_time = time(NULL);
 
+  p_gps_data->valid = 0;
   if (p_gps_data == NULL) {
     ESP_LOGE(TAG, "Memory allocation failed");
     return 1;
@@ -229,6 +230,7 @@ uint8_t gps_read_uart(gps_data_t *p_gps_data) {
         }
       } else {
         set_gps_status(UART_GPS_SYS_FIXED, true);
+        p_gps_data->valid = 1;
         return 0;
       }
     }

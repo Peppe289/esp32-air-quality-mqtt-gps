@@ -43,7 +43,7 @@ serialize_data_to_json_string(gps_data_t *p_gps_data,
   cJSON *pm, *position, *longitude, *latitude, *time;
   struct json_obj json;
 
-  if (p_gps_data || p_hm3301_data)
+  if (p_gps_data->valid || p_hm3301_data->valid)
     root = cJSON_CreateObject();
   else
     return (struct json_obj){NULL, NULL};
@@ -51,7 +51,7 @@ serialize_data_to_json_string(gps_data_t *p_gps_data,
   if (!root)
     return (struct json_obj){NULL, NULL};
 
-  if (p_gps_data) {
+  if (p_gps_data->valid) {
     cJSON_AddNumberToObject(root, "satellites", p_gps_data->n_satellites);
 
     position = cJSON_AddObjectToObject(root, "position");
@@ -77,7 +77,7 @@ serialize_data_to_json_string(gps_data_t *p_gps_data,
     cJSON_AddNumberToObject(time, "seconds", p_gps_data->time.tm_sec);
   }
 
-  if (p_hm3301_data) {
+  if (p_hm3301_data->valid) {
     pm = cJSON_AddObjectToObject(root, "hm3301");
     cJSON_AddNumberToObject(pm, "PM1.0", p_hm3301_data->pm1_0);
     cJSON_AddNumberToObject(pm, "PM2.5", p_hm3301_data->pm2_5);
@@ -149,7 +149,8 @@ void fs_recovery_json_task(void *args) {
 static void system_led_notify(uint32_t bitmask) {
 
   if (!(bitmask & I2C_HM3301_SYS_STATUS_INITIALIZED) ||
-      !(bitmask & UART_GPS_SYS_STATUS_INITIALIZED) || (bitmask & STORAGE_SYS_STATUS_FAILED)) {
+      !(bitmask & UART_GPS_SYS_STATUS_INITIALIZED) ||
+      (bitmask & STORAGE_SYS_STATUS_FAILED)) {
     led_red_blink_fast(); // CRITICAL ERROR: HM3301 or GPS not initialized
     return;
   }
@@ -201,15 +202,11 @@ void app_main(void) {
 
     vTaskDelay(pdMS_TO_TICKS(10000));
 
-    if (hm3301_read_i2c(NULL, &hm3301)) {
-      ESP_LOGE(TAG, "Error reading HM3301. Continue...\n");
-      continue;
-    }
+    if (hm3301_read_i2c(NULL, &hm3301))
+      ESP_LOGE(TAG, "Error reading HM3301.");
 
-    if (gps_read_uart(&nmea_gps)) {
-      ESP_LOGE(TAG, "Error reading GPS. Continue...");
-      continue;
-    }
+    if (gps_read_uart(&nmea_gps))
+      ESP_LOGE(TAG, "Error reading GPS.");
 
     json = serialize_data_to_json_string(&nmea_gps, &hm3301);
 
@@ -231,11 +228,15 @@ void app_main(void) {
         }
       }
 
+      // push data if the system is online, otherwise save on storage for later
+      // recovery. We want to save in storage only if we have valid data to
+      // save. No need to save if we don't have a fix or
+      // the sensor is not working.
       if ((bitmask & WIFI_SYS_STATUS_CONNECTED) &&
           (bitmask & MQTT_SYS_STATUS_CONNECTED) &&
           (bitmask & MQTT_SYS_STATUS_SUBSCRIBED))
         mqtt_publish_data_client((const char *)json.unformatted, "/topic/qos0");
-      else
+      else if (nmea_gps.valid && hm3301.valid)
         storage_write_on_file((const char *)json.unformatted);
 
       free(json.unformatted);
