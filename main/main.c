@@ -179,28 +179,10 @@ void app_main(void) {
     vTaskDelay(pdMS_TO_TICKS(10000));
 
     uint32_t bitmask = system_event_mask_get();
+    char bitmask_str[256];
 
-    if (bitmask & WIFI_SYS_STATUS_CONNECTED) {
-      ESP_LOGI(TAG, "\nWifi connected\n");
-    }
-    if (bitmask & WIFI_SYS_STATUS_CONNECTING) {
-      ESP_LOGI(TAG, "\nWifi connecting\n");
-    }
-    if (bitmask & WIFI_SYS_STATUS_ENABLED) {
-      ESP_LOGI(TAG, "\nWifi enabled\n");
-    }
-    if (bitmask & MQTT_SYS_STATUS_CONNECTED) {
-      ESP_LOGI(TAG, "\nMQTT connected\n");
-    }
-    if (bitmask & MQTT_SYS_STATUS_SUBSCRIBED) {
-      ESP_LOGI(TAG, "\nMQTT subscribed\n");
-    }
-    if (bitmask & STORAGE_SYS_STATUS_FAILED) {
-      ESP_LOGI(TAG, "\nStorage some error\n");
-    }
-    if (bitmask & STORAGE_SYS_STATUS_INIZIALIZED) {
-      ESP_LOGI(TAG, "\nStorage inizialized\n");
-    }
+    system_event_mask_code_str(bitmask, bitmask_str, sizeof(bitmask_str));
+    ESP_LOGI(TAG, "Current system status:\n%s", bitmask_str);
 
     if (hm3301_read_i2c(NULL, &hm3301)) {
       ESP_LOGE(TAG, "Error reading HM3301. Continue...\n");

@@ -10,5 +10,7 @@
 
 void system_event_mask_init();
 uint32_t system_event_mask_get(void);
+void system_event_mask_code_str(uint32_t bitmask, char *buffer,
+                                size_t buffer_size);
 
 #endif // end __GOD_HEADER_H__
