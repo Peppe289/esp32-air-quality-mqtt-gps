@@ -148,15 +148,25 @@ void hm3301_init_i2c() {
     set_hm3301_status(I2C_HM3301_SYS_STATUS_INITIALIZED, true);
   }
 
+  // TODO: ENABLE THIS DELAY IN PRODUCTION. For testing, we can skip it and do some dummy reads to clear the buffer.
+#if 0 
+  // From datasheet we need to wait 30s for stabilize. Wait 20s here and then make 5 dummy 
+  // reads at 2s interval to clear the buffer and be sure to get fresh data on the first read. 
   ESP_LOGI(TAG, "Wait for the sensor to stabilize...");
-  vTaskDelay(pdMS_TO_TICKS(2000));
+  vTaskDelay(pdMS_TO_TICKS(20000)); 
+#endif
 
   uint8_t dummy[29];
   uint8_t cmd = 0x88;
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < 5; i++) {
     i2c_master_transmit_receive(dev_handle, &cmd, 1, dummy, 29,
                                 pdMS_TO_TICKS(100));
-    vTaskDelay(pdMS_TO_TICKS(100));
+    // TODO: ENABLE THIS DELAY IN PRODUCTION. For testing, we can do shorter delay.
+#if 0
+    vTaskDelay(pdMS_TO_TICKS(2000));
+#else
+      vTaskDelay(pdMS_TO_TICKS(1000));
+#endif
   }
 
   ESP_LOGI(TAG, "Buffer empty");
