@@ -22,10 +22,10 @@
 
 static const char *TAG = "MAIN";
 
-struct json_obj {
+typedef struct json_obj_t {
   char *unformatted;
   char *std;
-} json_obj;
+} json_obj_t;
 
 /**
  * @brief Converts sensor data into a minified JSON string.
@@ -33,23 +33,22 @@ struct json_obj {
  * time, and PM concentration values.
  * * @param p_gps_data Pointer to the validated NMEA data structure.
  * @param p_hm3301_data   Pointer to the parsed PM sensor data.
- * @return struct json_obj Contains pointer to the JSON string
+ * @return json_obj_t Contains pointer to the JSON string
  * formatted/unformatted. Note: Caller is responsible for calling free().
  */
-static struct json_obj
-serialize_data_to_json_string(gps_data_t *p_gps_data,
-                              hm3301_data_t *p_hm3301_data) {
+static json_obj_t serialize_data_to_json_string(gps_data_t *p_gps_data,
+                                                hm3301_data_t *p_hm3301_data) {
   cJSON *root;
   cJSON *pm, *position, *longitude, *latitude, *time;
-  struct json_obj json;
+  json_obj_t json;
 
   if (p_gps_data->valid || p_hm3301_data->valid)
     root = cJSON_CreateObject();
   else
-    return (struct json_obj){NULL, NULL};
+    return (json_obj_t){NULL, NULL};
 
   if (!root)
-    return (struct json_obj){NULL, NULL};
+    return (json_obj_t){NULL, NULL};
 
   if (p_gps_data->valid) {
     cJSON_AddNumberToObject(root, "satellites", p_gps_data->n_satellites);
@@ -177,7 +176,7 @@ static void system_led_notify(uint32_t bitmask) {
 void app_main(void) {
   hm3301_data_t hm3301 = {0};
   gps_data_t nmea_gps = {0};
-  struct json_obj json;
+  json_obj_t json;
 
   led_init();
   led_blink_all();
@@ -241,7 +240,7 @@ void app_main(void) {
 
       free(json.unformatted);
       free(json.std);
-      memset(&json, 0, sizeof(char *) * 2);
+      memset(&json, 0, sizeof(json_obj_t));
     }
   }
 }
