@@ -32,6 +32,11 @@ function App() {
       })
   }
 
+  const formatReadableDate = (isoDate) => {
+    const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+    return new Date(isoDate).toLocaleDateString('it-IT', options);
+  };
+
   const fetchData = React.useCallback(() => {
     const start = Date.now();
     fetch(`${ipAddress}/api/data`)
@@ -40,7 +45,11 @@ function App() {
         return response.json();
       })
       .then((data) => {
-        setJsonData(data.results || []);
+        const formattedData = data.results.map((item) => ({
+          ...item,
+          orario: formatReadableDate(item.orario),
+        }));
+        setJsonData(formattedData);
         if (errServer) {
           toast.success('Connessione al server ristabilita!');
           setErrServer(false);
@@ -64,7 +73,11 @@ function App() {
     fetch(`${ipAddress}/api/data?day=${dayDate}`)
       .then((response) => response.json())
       .then((data) => {
-        setJsonData(data.results || []);
+        const formattedData = data.results.map((item) => ({
+          ...item,
+          orario: formatReadableDate(item.orario),
+        }));
+        setJsonData(formattedData);
         toast.success('Dati filtrati ricevuti con successo!');
       })
       .catch((error) => {
