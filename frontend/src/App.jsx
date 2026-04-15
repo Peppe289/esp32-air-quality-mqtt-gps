@@ -13,6 +13,24 @@ function App() {
   const [latency, setLatency] = useState(-1);
   const [dayDate, setDayDate] = useState(new Date().toISOString().split('T')[0]); // default oggi
   // const [timelineRange, setTimelineRange] = useState([0, 100]); // Default range
+  const [editAddr, setEditAddr] = useState(false);
+
+  const validateIpAddress = (ip) => {
+    const regex = /^(https?:\/\/)?((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(:\d+)?$/;
+    if (!regex.test(ip)) {
+      toast.error('Indirizzo IP non valido!');
+      return;
+    }
+
+    fetch(`${ip}/api/data`)
+      .then((response) => {
+        if (response.ok) {
+          setIpAddress(ip);
+          toast.success('Indirizzo IP aggiornato con successo!');
+          setErrServer(false);
+        }
+      })
+  }
 
   const fetchData = React.useCallback(() => {
     const start = Date.now();
@@ -120,8 +138,12 @@ function App() {
           </div>
         </div>
       </div>
-      <div id='current-server' className='fixed flex item-center justify-center flex-row bottom-2 right-2 text-xs text-gray-500'>
-        <p className='m-3'>Backend IP: {ipAddress}</p> <MdEdit />
+      <div id='current-server' className='flex item-center justify-center flex-row bottom-2 right-2 text-xs text-gray-500'>
+        <label htmlFor="ipAddress" >Server IP:
+          <input type="text" className={`m-3 ${!editAddr && `bg-gray-200`}`} id="ipAddress" value={ipAddress}
+            readOnly={!editAddr} onChange={(e) => validateIpAddress(e.target.value)} />
+        </label>
+        <p className='m-3 cursor-pointer' onClick={() => setEditAddr(!editAddr)}><MdEdit /></p>
       </div>
     </>
   );
