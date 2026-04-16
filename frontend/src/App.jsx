@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import Map from './components/Map';
 import { ToastContainer, toast } from 'react-toastify';
 import TimeRangeSlider from './components/TimeRangeSlider';
@@ -37,85 +37,42 @@ function App() {
     return new Date(isoDate).toLocaleDateString('it-IT', options);
   };
 
-  const fetchData = React.useCallback(() => {
-    const start = Date.now();
-    fetch(`${ipAddress}/api/data`)
-      .then((response) => {
-        setLatency(Date.now() - start);
-        return response.json();
-      })
-      .then((data) => {
-        const formattedData = data.results.map((item) => ({
-          ...item,
-          orario: formatReadableDate(item.orario),
-        }));
-        setJsonData(formattedData);
-        if (errServer) {
-          toast.success('Connessione al server ristabilita!');
-          setErrServer(false);
-        }
-      })
-      .catch((error) => {
-        if (!errServer) {
-          toast.error('Errore di connessione al server!');
-          setErrServer(true);
-        }
-        console.error('Error fetching data:', error);
-      });
-  }, [errServer, setJsonData, setErrServer, ipAddress]);
-
-  const fetchFilteredData = () => {
+  const fetchFilteredData = useCallback(() => {
     if (!dayDate) {
       toast.error('Inserisci la data!');
       return;
     }
 
+    const start = new Date();
+
     fetch(`${ipAddress}/api/data?day=${dayDate}`)
       .then((response) => response.json())
       .then((data) => {
+        const end = new Date();
+        setLatency(end - start);
+        console.log('Giorno: ', dayDate);
         const formattedData = data.results.map((item) => ({
           ...item,
           orario: formatReadableDate(item.orario),
         }));
         setJsonData(formattedData);
-        toast.success('Dati filtrati ricevuti con successo!');
+        if (errServer) toast.success('Dati filtrati ricevuti con successo!');
+        setErrServer(false);
       })
       .catch((error) => {
-        toast.error('Errore durante il filtraggio dei dati!');
+        if (!errServer) {
+          toast.error('Errore durante il filtraggio dei dati!');
+        }
         console.error('Error fetching filtered data:', error);
+        setErrServer(true);
       });
-  };
-
-  // const handleTimelineChange = (e) => {
-  //   const value = Number(e.target.value);
-  //   const newRange = [...timelineRange];
-  //   if (e.target.id === 'timelineStart') {
-  //     newRange[0] = value;
-  //   } else {
-  //     newRange[1] = value;
-  //   }
-  //   setTimelineRange(newRange);
-  // };
-
-  // const fetchTimelineData = () => {
-  //   const [start, end] = timelineRange;
-  //   fetch(`http://localhost:5000/api/data?timelineStart=${start}&timelineEnd=${end}`)
-  //     .then((response) => response.json())
-  //     .then((data) => {
-  //       setJsonData(data.results || []);
-  //       toast.success('Dati aggiornati in base alla timeline!');
-  //     })
-  //     .catch((error) => {
-  //       toast.error('Errore durante l\'aggiornamento dei dati dalla timeline!');
-  //       console.error('Error fetching timeline data:', error);
-  //     });
-  // };
+  }, [ipAddress, dayDate, errServer]);
 
   useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, updateInterval);
+    fetchFilteredData();
+    const interval = setInterval(fetchFilteredData, updateInterval);
     return () => clearInterval(interval);
-  }, [errServer, fetchData, updateInterval]);
+  }, [fetchFilteredData, updateInterval]);
 
   return (
     <>
@@ -141,9 +98,11 @@ function App() {
           <TimeRangeSlider />
           <div className='flex flex-col items-end'>
             <label htmlFor="updateInterval">Update Interval (ms):</label>
-            <input className='border-2 border-gray-300 rounded m-2 p-1 w-24'
+            <input readOnly={dayDate == (new Date().toISOString().split('T')[0]) ? false : true}
+              className={`border-2 border-gray-300 rounded m-2 p-1 w-24 ${dayDate == (new Date().toISOString().split('T')[0]) ? '' : 'bg-gray-200 cursor-pointer'}`}
               type="number"
               id="updateInterval"
+              onClick={dayDate != (new Date().toISOString().split('T')[0]) ? () => toast.error('Per modificare l\'intervallo di aggiornamento, seleziona la data odierna!') : undefined}
               value={updateInterval}
               onChange={(e) => setUpdateInterval(Number(e.target.value))}
             />
