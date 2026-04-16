@@ -1,10 +1,11 @@
-import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import Map from './components/Map';
 import { Slide, ToastContainer, toast } from 'react-toastify';
 import TimeRangeSlider from './components/TimeRangeSlider';
 import './style.css';
 import SideList from './components/SideList';
 import { MdEdit } from "react-icons/md";
+import StaticStation from './components/StaticStation';
 
 function App() {
   const [ipAddress, setIpAddress] = useState("http://localhost:5000");
@@ -19,6 +20,7 @@ function App() {
   const [timelineRange, setTimelineRange] = useState([MIN, MAX]); // Default range
   const [centroMappa, setCentroMappa] = useState([40.774, 14.789]);
   const [zoom, setZoom] = useState(15);
+  const [staticStation, setStaticStation] = useState([]);
 
   const sideMarkerClickHandler = (lat, lon) => {
     setCentroMappa([lat, lon]);
@@ -116,7 +118,7 @@ function App() {
             <SideList jsonData={filteredData} clickHandler={sideMarkerClickHandler} />
           </div>
           <div className="flex-1 h-full">
-            <Map centroMappa={centroMappa} jsonData={filteredData} zoom={zoom} />
+            <Map centroMappa={centroMappa} jsonData={filteredData} zoom={zoom} staticStation={staticStation} />
           </div>
         </div>
         <ToastContainer />
@@ -153,6 +155,7 @@ function App() {
         </label>
         <p className='m-3 cursor-pointer' onClick={() => setEditAddr(!editAddr)}><MdEdit /></p>
       </div>
+      <StaticStation setStaticStation={setStaticStation} />
     </>
   );
 }
