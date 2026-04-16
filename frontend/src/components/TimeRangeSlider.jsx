@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Range, getTrackBackground } from 'react-range';
 
-const TimeRangeSlider = () => {
-  // Esempio: intervallo di 24 ore (timestamp in millisecondi)
-  const MIN = new Date('2026-04-15T00:00:00').getTime();
-  const MAX = new Date('2026-04-15T23:59:59').getTime();
-  const STEP = 1000 * 60 * 15; // Step di 15 minuti
+function TimeRangeSlider({ values, setValues, min, max }) {
+  const STEP = 1000 * 60 * 1; // Step di 1 minuto
 
-  const [values, setValues] = useState([MIN, MAX]);
+  function getAction(value) {
+    console.log('Valore selezionato:', value);
+    setValues(value);
+  }
 
   const formatTime = (ms) => {
     return new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -23,9 +23,9 @@ const TimeRangeSlider = () => {
       <Range
         values={values}
         step={STEP}
-        min={MIN}
-        max={MAX}
-        onChange={(values) => setValues(values)}
+        min={min}
+        max={max}
+        onChange={(values) => getAction(values)}
         renderTrack={({ props, children }) => (
           <div
             onMouseDown={props.onMouseDown}
@@ -38,9 +38,9 @@ const TimeRangeSlider = () => {
               style={{
                 background: getTrackBackground({
                   values,
-                  colors: ['#334155', '#3b82f6', '#334155'], // Slate-700, Blue-500, Slate-700
-                  min: MIN,
-                  max: MAX
+                  colors: ['#334155', '#3b82f6', '#334155'],
+                  min: min,
+                  max: max
                 })
               }}
             >

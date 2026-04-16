@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import Map from './components/Map';
 import { ToastContainer, toast } from 'react-toastify';
 import TimeRangeSlider from './components/TimeRangeSlider';
@@ -12,8 +12,10 @@ function App() {
   const [updateInterval, setUpdateInterval] = useState(30000); // default 30s
   const [latency, setLatency] = useState(-1);
   const [dayDate, setDayDate] = useState(new Date().toISOString().split('T')[0]); // default oggi
-  // const [timelineRange, setTimelineRange] = useState([0, 100]); // Default range
   const [editAddr, setEditAddr] = useState(false);
+  const MIN = useMemo(() => new Date(dayDate + 'T00:00:00').getTime(), [dayDate]);
+  const MAX = useMemo(() => new Date(dayDate + 'T23:59:59').getTime(), [dayDate]);
+  const [timelineRange, setTimelineRange] = useState([MIN, MAX]); // Default range
 
   const validateIpAddress = (ip) => {
     const regex = /^(https?:\/\/)?((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(:\d+)?$/;
@@ -31,6 +33,15 @@ function App() {
         }
       })
   }
+
+  const handleDateChange = (e) => {
+    const newDate = e.target.value;
+    const newMin = new Date(newDate + 'T00:00:00').getTime();
+    const newMax = new Date(newDate + 'T23:59:59').getTime();
+
+    setDayDate(newDate);
+    setTimelineRange([newMin, newMax]);
+  };
 
   const formatReadableDate = (isoDate) => {
     const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' };
@@ -51,11 +62,7 @@ function App() {
         const end = new Date();
         setLatency(end - start);
         console.log('Giorno: ', dayDate);
-        const formattedData = data.results.map((item) => ({
-          ...item,
-          orario: formatReadableDate(item.orario),
-        }));
-        setJsonData(formattedData);
+        setJsonData(data.results);
         if (errServer) toast.success('Dati filtrati ricevuti con successo!');
         setErrServer(false);
       })
@@ -74,12 +81,25 @@ function App() {
     return () => clearInterval(interval);
   }, [fetchFilteredData, updateInterval]);
 
+  const filteredData = useMemo(() => {
+    return jsonData
+      .filter((item) => {
+        const itemTime = new Date(item.orario).getTime();
+        return itemTime >= timelineRange[0] && itemTime <= timelineRange[1];
+      })
+      .map((item) => ({
+        ...item,
+        // Nota: formattiamo la data solo per la visualizzazione nei popup della mappa
+        orario: formatReadableDate(item.orario),
+      }));
+  }, [jsonData, timelineRange]);
+
   return (
     <>
       <div className='m-3'>
         <ToastContainer />
         <div style={{ height: "80vh" }} className='border-2 border-gray-300 rounded'>
-          <Map jsonData={jsonData} />
+          <Map jsonData={filteredData} />
         </div>
         <div className='flex space-x-4 justify-between mt-2'>
           <div className='flex flex-row items-center space-x-2'>
@@ -89,13 +109,10 @@ function App() {
               type="date"
               id="dayDate"
               value={dayDate}
-              onChange={(e) => {
-                setDayDate(e.target.value);
-                fetchFilteredData();
-              }}
+              onChange={handleDateChange}
             />
           </div>
-          <TimeRangeSlider />
+          <TimeRangeSlider min={MIN} max={MAX} values={timelineRange} setValues={setTimelineRange} />
           <div className='flex flex-col items-end'>
             <label htmlFor="updateInterval">Update Interval (ms):</label>
             <input readOnly={dayDate == (new Date().toISOString().split('T')[0]) ? false : true}
