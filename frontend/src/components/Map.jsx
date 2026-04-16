@@ -22,7 +22,7 @@ function StaticMarkers({ staticStation }) {
         >
           <Tooltip direction="top" offset={[0, -5]}>
             <div className="text-xs font-sans">
-              <div className="font-bold border-b border-gray-200 mb-1">ID: {punto.id}</div>
+              <div className="font-bold border-b border-gray-200 mb-1">ID: {punto.ID}</div>
               <div>Lat: {punto.lat.toFixed(4)}</div>
               <div>Lon: {punto.lon.toFixed(4)}</div>
             </div>
