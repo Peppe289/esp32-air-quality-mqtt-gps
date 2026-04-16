@@ -1,8 +1,9 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import Map from './components/Map';
-import { ToastContainer, toast } from 'react-toastify';
+import { Slide, ToastContainer, toast } from 'react-toastify';
 import TimeRangeSlider from './components/TimeRangeSlider';
 import './style.css';
+import SideList from './components/SideList';
 import { MdEdit } from "react-icons/md";
 
 function App() {
@@ -16,6 +17,14 @@ function App() {
   const MIN = useMemo(() => new Date(dayDate + 'T00:00:00').getTime(), [dayDate]);
   const MAX = useMemo(() => new Date(dayDate + 'T23:59:59').getTime(), [dayDate]);
   const [timelineRange, setTimelineRange] = useState([MIN, MAX]); // Default range
+  const [centroMappa, setCentroMappa] = useState([40.774, 14.789]);
+  const [zoom, setZoom] = useState(15);
+
+  const sideMarkerClickHandler = (lat, lon) => {
+    setCentroMappa([lat, lon]);
+    setZoom(18); // Zoom più ravvicinato
+    //console.log(`Centro mappa aggiornato a: ${lat}, ${lon}`);
+  }
 
   const validateIpAddress = (ip) => {
     const regex = /^(https?:\/\/)?((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(:\d+)?$/;
@@ -96,11 +105,21 @@ function App() {
 
   return (
     <>
+      <div className='flex items-center justify-center flex-col mt-4'>
+        <h1 className='text-3xl font-bold text-gray-800'>PM 2.5 Monitoraggio</h1>
+        <p className='text-sm text-gray-500'>Visualizza i dati dei sensori di PM 2.5 in tempo reale</p>
+      </div>
       <div className='m-3'>
-        <ToastContainer />
-        <div style={{ height: "80vh" }} className='border-2 border-gray-300 rounded'>
-          <Map jsonData={filteredData} />
+        <div className="flex w-full h-[80vh] border-2 border-gray-300 rounded overflow-hidden p-4">
+          <div className="w-1/3 overflow-y-auto h-full border-r border-gray-300 bg-white">
+            <h2 className='text-lg font-bold mb-2 sticky top-0 bg-white' >Dati Sensori</h2>
+            <SideList jsonData={filteredData} clickHandler={sideMarkerClickHandler} />
+          </div>
+          <div className="flex-1 h-full">
+            <Map centroMappa={centroMappa} jsonData={filteredData} zoom={zoom} />
+          </div>
         </div>
+        <ToastContainer />
         <div className='flex space-x-4 justify-between mt-2'>
           <div className='flex flex-row items-center space-x-2'>
             <label htmlFor="dayDate">Seleziona Giorno:</label>
