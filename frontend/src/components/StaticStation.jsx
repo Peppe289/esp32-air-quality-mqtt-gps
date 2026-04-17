@@ -1,36 +1,34 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
 
-const StaticStation = ({ setStaticStation }) => {
+const StaticStation = ({ setStaticStation, loading, setLoading}) => {
     const [data, setData] = useState([]);
-    const [loading, setLoading] = useState(true);
+    
     const [filters, setFilters] = useState({
         station_id: '',
         limit: 100
     });
 
-        const VPN_Addr = "10.6.0.1";
+    const VPN_Addr = import.meta.env.VITE_REACT_APP_VPN_ADDR || "http://localhost:5000";
 
     useEffect(() => {
-        fetch(`http://${VPN_Addr}:5000/api/static-station`)
-        .then((response) => {
-            if (response.ok) {
-                toast.success('Dati stazioni fisse caricati con successo!');
-                return response.json();
-            } else {
-                toast.error('Errore nel caricamento dei dati delle stazioni fisse. Assicurati di essere connesso alla VPN aziendale.');
-                throw new Error('Errore nella richiesta: ' + response.status);
-            }
-        })
-        .then((data) => {
-            setStaticStation(data);
-        })
-        .catch((error) => {
-            console.error('Errore durante il fetch:', error);
-        });
+        fetch(`${VPN_Addr}/api/static-station`)
+            .then((response) => {
+                if (response.ok) {
+                    toast.success('Dati stazioni fisse caricati con successo!');
+                    return response.json();
+                } else {
+                    toast.error('Errore nel caricamento dei dati delle stazioni fisse. Assicurati di essere connesso alla VPN aziendale.');
+                    throw new Error('Errore nella richiesta: ' + response.status);
+                }
+            })
+            .then((data) => {
+                setStaticStation(data);
+            })
+            .catch((error) => {
+                console.error('Errore durante il fetch:', error);
+            });
     }, [setStaticStation]);
-
-    const API_URL = "http://10.6.0.1:5000/api/history-stazioni";
 
     const fetchData = useCallback(async () => {
         try {
@@ -39,17 +37,23 @@ const StaticStation = ({ setStaticStation }) => {
                 limit: filters.limit
             }).toString();
 
-            const response = await fetch(`${API_URL}?${queryParams}`);
+            const response = await fetch(`${VPN_Addr}/api/history-stazioni?${queryParams}`);
             if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
-            
+
+            if (response.status === 403) {
+                toast.error('Accesso negato. Assicurati di essere connesso alla VPN aziendale.');
+                
+                return;
+            }
+
             const rawResponse = await response.json();
-            
+
             // Log critico: controlla la console del browser per vedere la struttura
             console.log("Dati ricevuti dal server:", rawResponse);
 
             // Gestione flessibile della risposta (array diretto o oggetto avvolto)
-            const finalData = Array.isArray(rawResponse) 
-                ? rawResponse 
+            const finalData = Array.isArray(rawResponse)
+                ? rawResponse
                 : (rawResponse.data || rawResponse.results || []);
 
             setData(finalData);
@@ -63,7 +67,7 @@ const StaticStation = ({ setStaticStation }) => {
 
     useEffect(() => {
         fetchData();
-        const interval = setInterval(fetchData, 1000); 
+        const interval = setInterval(fetchData, 1000);
         return () => clearInterval(interval);
     }, [fetchData]);
 
@@ -146,7 +150,7 @@ const StaticStation = ({ setStaticStation }) => {
                     </table>
                 </div>
             </div>
-            
+
             {/* Footer di Debug: utile per te per vedere l'ultimo oggetto ricevuto */}
             {data.length > 0 && (
                 <div style={debugFooter}>

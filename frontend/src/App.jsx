@@ -8,7 +8,7 @@ import { MdEdit } from "react-icons/md";
 import StaticStation from './components/StaticStation';
 
 function App() {
-  const [ipAddress, setIpAddress] = useState("http://10.6.0.1:5000");
+  const [ipAddress, setIpAddress] = useState(import.meta.env.VITE_REACT_APP_SERVER_API_URL || "http://localhost:5000");
   const [jsonData, setJsonData] = useState([]);
   const [errServer, setErrServer] = useState(false);
   const [updateInterval, setUpdateInterval] = useState(30000); // default 30s
@@ -21,6 +21,7 @@ function App() {
   const [centroMappa, setCentroMappa] = useState([40.774, 14.789]);
   const [zoom, setZoom] = useState(15);
   const [staticStation, setStaticStation] = useState([]);
+  const [isOnVPN, setIsOnVPN] = useState(true);
 
   const sideMarkerClickHandler = (lat, lon) => {
     setCentroMappa([lat, lon]);
@@ -155,7 +156,7 @@ function App() {
         </label>
         <p className='m-3 cursor-pointer' onClick={() => setEditAddr(!editAddr)}><MdEdit /></p>
       </div>
-      <StazioniFisseTable setStaticStation={setStaticStation} />
+      {isOnVPN && <StaticStation  setStaticStation={setStaticStation} loading={isOnVPN} setLoading={setIsOnVPN} />}
     </>
   );
 }
