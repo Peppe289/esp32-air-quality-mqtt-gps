@@ -28,7 +28,7 @@ const StaticStation = ({ setStaticStation, loading, setLoading}) => {
             .catch((error) => {
                 console.error('Errore durante il fetch:', error);
             });
-    }, [setStaticStation]);
+    }, [VPN_Addr, setStaticStation]);
 
     const fetchData = useCallback(async () => {
         try {
@@ -63,7 +63,7 @@ const StaticStation = ({ setStaticStation, loading, setLoading}) => {
         } finally {
             setLoading(false);
         }
-    }, [filters.station_id, filters.limit]);
+    }, [filters.station_id, filters.limit, VPN_Addr, setLoading]);
 
     useEffect(() => {
         fetchData();

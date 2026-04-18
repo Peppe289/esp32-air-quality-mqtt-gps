@@ -114,7 +114,7 @@ function App() {
       </div>
       <div className='m-3'>
         <div className="flex w-full h-[80vh] border-2 border-gray-300 rounded overflow-hidden p-4">
-          <div className="w-1/3 overflow-y-auto h-full border-r border-gray-300 bg-white">
+          <div className="w-1/5 overflow-y-auto h-full border-r border-gray-300 bg-white">
             <h2 className='text-lg font-bold mb-2 sticky top-0 bg-white' >Dati Sensori</h2>
             <SideList jsonData={filteredData} clickHandler={sideMarkerClickHandler} />
           </div>
