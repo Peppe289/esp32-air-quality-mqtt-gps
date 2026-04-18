@@ -41,3 +41,15 @@ MQTT_CONFIDENTIALS_TOPIC=<#>
 ## 🛡️ Security Note
 
 The **vpnOnly** middleware identifies clients based on the `10.6.0.0/24` subnet. Ensure your **WireGuard** or **OpenVPN** server correctly forwards the client's real IP address via headers if using a reverse proxy.
+
+# PM Monitor Frontend
+
+A React-based frontend application that visualizes environmental monitoring data on an interactive map. It displays sampling points from mobile sensors and provides access to fixed station data restricted to VPN connections.
+
+## 🚀 Features
+
+- **Interactive Map**: Displays sampling points from mobile sensors on a map interface.
+- **Real-time Updates**: Fetches data from the backend API with configurable update intervals and latency monitoring.
+- **VPN-Restricted Access**: Fixed station data is only visible to users connected via VPN, ensuring data security.
+- **User-Friendly Interface**: Built with React and Vite for fast development and optimal performance.
+
