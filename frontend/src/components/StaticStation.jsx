@@ -9,10 +9,8 @@ const StaticStation = ({ setStaticStation, loading, setLoading}) => {
         limit: 100
     });
 
-    const VPN_Addr = import.meta.env.VITE_REACT_APP_VPN_ADDR || "http://localhost:5000";
-
     useEffect(() => {
-        fetch(`${VPN_Addr}/api/static-station`)
+        fetch(`/api/confidential/static-station`)
             .then((response) => {
                 if (response.ok) {
                     toast.success('Dati stazioni fisse caricati con successo!');
@@ -28,7 +26,7 @@ const StaticStation = ({ setStaticStation, loading, setLoading}) => {
             .catch((error) => {
                 console.error('Errore durante il fetch:', error);
             });
-    }, [VPN_Addr, setStaticStation]);
+    }, [setStaticStation]);
 
     const fetchData = useCallback(async () => {
         try {
@@ -37,7 +35,7 @@ const StaticStation = ({ setStaticStation, loading, setLoading}) => {
                 limit: filters.limit
             }).toString();
 
-            const response = await fetch(`${VPN_Addr}/api/history-stazioni?${queryParams}`);
+            const response = await fetch(`/api/confidential/history-stazioni?${queryParams}`);
             if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
 
             if (response.status === 403) {
@@ -63,7 +61,7 @@ const StaticStation = ({ setStaticStation, loading, setLoading}) => {
         } finally {
             setLoading(false);
         }
-    }, [filters.station_id, filters.limit, VPN_Addr, setLoading]);
+    }, [filters.station_id, filters.limit, setLoading]);
 
     useEffect(() => {
         fetchData();

@@ -1,0 +1,43 @@
+version: '3.8'
+services:
+  # Backend service
+  api:
+    container_name: airquality-backend
+    restart: unless-stopped
+    build: backend
+    env_file:
+      - backend/.env
+    expose:
+      - "5000"
+    networks:
+      - airquality_net
+  
+  # Frontend service
+  webgui:
+    container_name: airquality-frontend
+    restart: unless-stopped
+    build: frontend
+    env_file:
+      - frontend/.env
+    expose:
+      - "5173"
+    networks:
+      - airquality_net
+
+  # Nginx reverse proxy
+  nginx:
+    image: nginx
+    container_name: airquality-nginx
+    restart: unless-stopped
+    ports:
+      - "9910:9910"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - airquality_net
+    depends_on:
+      - api
+
+networks:
+  airquality_net:
+    driver: bridge

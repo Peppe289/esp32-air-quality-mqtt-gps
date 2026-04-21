@@ -8,13 +8,11 @@ import { MdEdit } from "react-icons/md";
 import StaticStation from './components/StaticStation';
 
 function App() {
-  const [ipAddress, setIpAddress] = useState(import.meta.env.VITE_REACT_APP_SERVER_API_URL || "http://localhost:5000");
   const [jsonData, setJsonData] = useState([]);
   const [errServer, setErrServer] = useState(false);
   const [updateInterval, setUpdateInterval] = useState(30000); // default 30s
   const [latency, setLatency] = useState(-1);
   const [dayDate, setDayDate] = useState(new Date().toISOString().split('T')[0]); // default oggi
-  const [editAddr, setEditAddr] = useState(false);
   const MIN = useMemo(() => new Date(dayDate + 'T00:00:00').getTime(), [dayDate]);
   const MAX = useMemo(() => new Date(dayDate + 'T23:59:59').getTime(), [dayDate]);
   const [timelineRange, setTimelineRange] = useState([MIN, MAX]); // Default range
@@ -27,23 +25,6 @@ function App() {
     setCentroMappa([lat, lon]);
     setZoom(18); // Zoom più ravvicinato
     //console.log(`Centro mappa aggiornato a: ${lat}, ${lon}`);
-  }
-
-  const validateIpAddress = (ip) => {
-    const regex = /^(https?:\/\/)?((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(:\d+)?$/;
-    if (!regex.test(ip)) {
-      toast.error('Indirizzo IP non valido!');
-      return;
-    }
-
-    fetch(`${ip}/api/data`)
-      .then((response) => {
-        if (response.ok) {
-          setIpAddress(ip);
-          toast.success('Indirizzo IP aggiornato con successo!');
-          setErrServer(false);
-        }
-      })
   }
 
   const handleDateChange = (e) => {
@@ -68,7 +49,7 @@ function App() {
 
     const start = new Date();
 
-    fetch(`${ipAddress}/api/data?day=${dayDate}`)
+    fetch(`/api/public/data?day=${dayDate}`)
       .then((response) => response.json())
       .then((data) => {
         const end = new Date();
@@ -85,7 +66,7 @@ function App() {
         console.error('Error fetching filtered data:', error);
         setErrServer(true);
       });
-  }, [ipAddress, dayDate, errServer]);
+  }, [dayDate, errServer]);
 
   useEffect(() => {
     fetchFilteredData();
@@ -148,13 +129,6 @@ function App() {
             <p className='text-sm text-gray-500'>Latency: {latency} ms</p>
           </div>
         </div>
-      </div>
-      <div id='current-server' className='flex item-center justify-center flex-row bottom-2 right-2 text-xs text-gray-500'>
-        <label htmlFor="ipAddress" >Server IP:
-          <input type="text" className={`m-3 ${!editAddr && `bg-gray-200`}`} id="ipAddress" value={ipAddress}
-            readOnly={!editAddr} onChange={(e) => validateIpAddress(e.target.value)} />
-        </label>
-        <p className='m-3 cursor-pointer' onClick={() => setEditAddr(!editAddr)}><MdEdit /></p>
       </div>
       {isOnVPN && <StaticStation  setStaticStation={setStaticStation} loading={isOnVPN} setLoading={setIsOnVPN} />}
     </>

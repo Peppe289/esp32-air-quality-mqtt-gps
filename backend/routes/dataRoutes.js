@@ -9,6 +9,8 @@ const path = require('path');
 const fs = require('fs');
 const SensorService = require('../services/sensorService');
 const SensorServiceConfidential = require('../services/sensorServiceConfidential');
+const publicRoute = "/public";
+const confidentialRoute = "/confidential";
 
 /**
  * Global logging middleware for debugging incoming requests.
@@ -49,7 +51,7 @@ const vpnOnly = (req, res, next) => {
  * @group Confidential - Accessible via VPN only
  * @returns {Object} 200 - An object containing the array of records and total count.
  */
-router.get('/history-stazioni', vpnOnly, (req, res) => {
+router.get(`${confidentialRoute}/history-stazioni`, vpnOnly, (req, res) => {
     try {
         const filters = {
             station_id: req.query.station_id,
@@ -69,7 +71,7 @@ router.get('/history-stazioni', vpnOnly, (req, res) => {
  * @description Serves the static configuration of fixed stations from a JSON file.
  * @group Confidential - Accessible via VPN only
  */
-router.get('/static-station', vpnOnly, (req, res) => {
+router.get(`${confidentialRoute}/static-station`, vpnOnly, (req, res) => {
     const filePath = path.join(__dirname, '..', 'data', 'stazioni_fisse.json');
     
     fs.readFile(filePath, 'utf8', (err, data) => {
@@ -96,7 +98,7 @@ router.get('/static-station', vpnOnly, (req, res) => {
  * @query {string} fine - Optional ISO end date
  * @group Public - Accessible within the local subnet
  */
-router.get('/data', (req, res) => {
+router.get(`${publicRoute}/data`, (req, res) => {
     try {
         const { day, ...filters } = req.query;
 
