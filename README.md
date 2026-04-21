@@ -86,7 +86,6 @@ MQTT_CONFIDENTIALS_PASSWORD=<your_password>
 MQTT_CONFIDENTIALS_TOPIC=<#>
 ```
 
-
 ## 🛡️ Security Note
 
 The **vpnOnly** middleware identifies clients based on the `10.6.0.0/24` subnet. Ensure your **WireGuard** or **OpenVPN** server correctly forwards the client's real IP address via headers if using a reverse proxy.
@@ -102,3 +101,31 @@ A React-based frontend application that visualizes environmental monitoring data
 - **VPN-Restricted Access**: Fixed station data is only visible to users connected via VPN, ensuring data security.
 - **User-Friendly Interface**: Built with React and Vite for fast development and optimal performance.
 
+# 🐳 Docker Infrastructure
+
+The entire ecosystem is containerized to ensure portability, security, and consistent environments across development and production. The architecture follows a Microservices pattern orchestrated via Docker Compose.
+
+#### Service Architecture
+
+- **Reverse Proxy (Nginx)**: The single point of entry (port 9910). It handles request routing, hides internal port logic, and implements security layers.
+- **Frontend (React + Vite)**: Optimized via a Multi-stage build. The application is compiled into static assets and served by a lightweight Nginx instance.
+- **Backend (Node.js)**: A RESTful API service that processes MQTT streams and manages the SQLite database.
+- **Network**: All services communicate over a private bridge network (airquality_net), isolating the backend and database from direct public access.
+
+### Security Implementation: VPN & IP Spoofing Protection
+
+Access control is enforced at the Proxy level. Sensitive routes (e.g., /api/confidential/*) are restricted to specific IP ranges (Company VPN - 10.6.0.0/24).
+To prevent Application-level IP Spoofing, the proxy is configured to overwrite the `X-Forwarded-For` header with the real TCP remote address, ensuring the backend receives validated client identities.
+
+> Ensure a .env file is present in the /backend directory. This file is injected into the container at runtime.
+
+Build and start all containers in detached mode:
+
+```sh
+docker compose up -d --build
+```
+
+#### Production Optimizations
+
+- **Stateless Frontend**: By using a multi-stage build, the final image contains no source code or node_modules, only the production-ready /dist folder.
+- **CORS Mitigation**: Since the frontend and backend are unified under the same origin via Nginx, Cross-Origin Resource Sharing issues are eliminated by design without compromising security headers.
