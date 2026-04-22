@@ -20,6 +20,7 @@ function App() {
   const [zoom, setZoom] = useState(15);
   const [staticStation, setStaticStation] = useState([]);
   const [isOnVPN, setIsOnVPN] = useState(true);
+  const [route, setRoute] = useState('/api/confidential');
 
   const sideMarkerClickHandler = (lat, lon) => {
     setCentroMappa([lat, lon]);
@@ -49,8 +50,13 @@ function App() {
 
     const start = new Date();
 
-    fetch(`/api/public/data?day=${dayDate}`)
-      .then((response) => response.json())
+    fetch(`${route}/data?day=${dayDate}`)
+      .then((response) => {
+        if (!response.ok) {
+          setRoute('/api/public');
+        }
+        return response.json();
+      })
       .then((data) => {
         const end = new Date();
         setLatency(end - start);
@@ -66,7 +72,7 @@ function App() {
         console.error('Error fetching filtered data:', error);
         setErrServer(true);
       });
-  }, [dayDate, errServer]);
+  }, [route,dayDate, errServer]);
 
   useEffect(() => {
     fetchFilteredData();
