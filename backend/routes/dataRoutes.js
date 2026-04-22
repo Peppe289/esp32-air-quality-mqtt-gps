@@ -24,34 +24,11 @@ router.use((req, res, next) => {
 });
 
 /**
- * Middleware to restrict access to company VPN IP ranges (10.6.0.x).
- * @param {Object} req - Express request object.
- * @param {Object} res - Express response object.
- * @param {Function} next - Express next middleware function.
- */
-const vpnOnly = (req, res, next) => {
-    const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-    
-    // Check if the IP starts with the WireGuard VPN subnet prefix
-    const isVpn = clientIp.startsWith('10.6.0.') || clientIp === '::1';
-
-    if (isVpn) {
-        next();
-    } else {
-        console.warn(`🛑 Unauthorized Access Blocked: IP ${clientIp}`);
-        res.status(403).json({ 
-            error: "Forbidden", 
-            message: "Access granted only via Company VPN." 
-        });
-    }
-};
-
-/**
  * @route GET /api/history-stazioni
  * @group Confidential - Accessible via VPN only
  * @returns {Object} 200 - An object containing the array of records and total count.
  */
-router.get(`${confidentialRoute}/history-stazioni`, vpnOnly, (req, res) => {
+router.get(`${confidentialRoute}/history-stazioni`, (req, res) => {
     try {
         const filters = {
             station_id: req.query.station_id,
@@ -71,7 +48,7 @@ router.get(`${confidentialRoute}/history-stazioni`, vpnOnly, (req, res) => {
  * @description Serves the static configuration of fixed stations from a JSON file.
  * @group Confidential - Accessible via VPN only
  */
-router.get(`${confidentialRoute}/static-station`, vpnOnly, (req, res) => {
+router.get(`${confidentialRoute}/static-station`, (req, res) => {
     const filePath = path.join(__dirname, '..', 'data', 'stazioni_fisse.json');
     
     fs.readFile(filePath, 'utf8', (err, data) => {
@@ -90,6 +67,24 @@ router.get(`${confidentialRoute}/static-station`, vpnOnly, (req, res) => {
     });
 });
 
+router.get(`${confidentialRoute}/data`, (req, res) => {
+    try {
+        const { day, ...filters } = req.query;
+
+        // If a specific day is provided, we override start/end filters to cover the full 24h
+        if (day) {
+            filters.inizio = `${day}T00:00:00.000Z`;
+            filters.fine = `${day}T23:59:59.999Z`;
+        }
+
+        const results = SensorService.getHistory(filters);
+        res.json({ results, count: results.length });
+    } catch (err) {
+        console.error(`❌ [ROUTE ERROR] /data: ${err.message}`);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
 /**
  * @route GET /api/data
  * @description Retrieves historical data for the mobile sensor.
@@ -101,6 +96,19 @@ router.get(`${confidentialRoute}/static-station`, vpnOnly, (req, res) => {
 router.get(`${publicRoute}/data`, (req, res) => {
     try {
         const { day, ...filters } = req.query;
+
+        const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+        // if the request is not from the VPN, we apply a geofencing filter
+        // to limit data to the area around the university
+        console.log(`🌐 Applying geofencing filters for IP ${clientIp}`);
+        filters.range_lat = {
+            min: 40.7670,
+            max: 40.7755
+        };
+        filters.range_lon = {
+            min: 14.7850,
+            max: 14.7965
+        };
 
         // If a specific day is provided, we override start/end filters to cover the full 24h
         if (day) {

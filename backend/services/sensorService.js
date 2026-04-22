@@ -118,9 +118,11 @@ const SensorService = {
      * @param {string} [filters.inizio] - Start ISO string (inclusive).
      * @param {string} [filters.fine] - End ISO string (inclusive).
      * @param {number} [filters.limit=5000] - Max number of records to return.
+     * @param {Object} [filters.range_lat] - Latitude range object with min and max properties.
+     * @param {Object} [filters.range_lon] - Longitude range object with min and max properties.
      * @returns {Array<Object>} List of sensor readings.
      */
-    getHistory({ inizio, fine, limit = 5000 }) {
+    getHistory({ inizio, fine, limit = 5000, range_lat, range_lon }) {
         let query = "SELECT * FROM letture";
         const params = [];
         const conditions = [];
@@ -132,6 +134,17 @@ const SensorService = {
         if (fine) {
             conditions.push("orario <= ?");
             params.push(fine);
+        }
+
+        // Add latitude and longitude range filters if provided
+        if (range_lat) {
+            conditions.push("lat BETWEEN ? AND ?");
+            params.push(range_lat.min, range_lat.max);
+        }
+
+        if (range_lon) {
+            conditions.push("lon BETWEEN ? AND ?");
+            params.push(range_lon.min, range_lon.max);
         }
 
         if (conditions.length > 0) {
