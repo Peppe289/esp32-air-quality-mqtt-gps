@@ -12,7 +12,7 @@ const path = require('path');
  * Resolves the path to ensure the database is created in the correct directory
  * regardless of where the process is started.
  */
-const DB_PATH = path.resolve(__dirname, '../pm_monitor.db');
+const DB_PATH = path.resolve(__dirname, '../data/pm_monitor.db');
 
 /**
  * Database Instance Initialization
