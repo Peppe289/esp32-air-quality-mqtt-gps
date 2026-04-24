@@ -17,8 +17,6 @@ services:
     container_name: airquality-frontend
     restart: unless-stopped
     build: frontend
-    env_file:
-      - frontend/.env
     expose:
       - "5173"
     networks:
