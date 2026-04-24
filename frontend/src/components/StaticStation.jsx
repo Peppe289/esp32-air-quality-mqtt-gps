@@ -39,8 +39,8 @@ const StaticStation = ({ setStaticStation, loading, setLoading}) => {
             if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
 
             if (response.status === 403) {
-                toast.error('Accesso negato. Assicurati di essere connesso alla VPN aziendale.');
-                
+                //toast.error('Accesso negato. Assicurati di essere connesso alla VPN aziendale.');
+                throw new Error('Accesso negato: VPN richiesta');
                 return;
             }
 
@@ -57,8 +57,6 @@ const StaticStation = ({ setStaticStation, loading, setLoading}) => {
             setData(finalData);
         } catch (error) {
             console.error("❌ Errore Fetch:", error);
-            // Non resettiamo i dati per evitare che la tabella sparisca in caso di micro-interruzione VPN
-        } finally {
             setLoading(false);
         }
     }, [filters.station_id, filters.limit, setLoading]);

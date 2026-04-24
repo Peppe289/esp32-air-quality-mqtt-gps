@@ -66,9 +66,9 @@ function App() {
         setErrServer(false);
       })
       .catch((error) => {
-        if (!errServer) {
-          toast.error('Errore durante il filtraggio dei dati!');
-        }
+        //if (!errServer) {
+        //  toast.error('Errore durante il filtraggio dei dati!');
+        //}
         console.error('Error fetching filtered data:', error);
         setErrServer(true);
       });
