@@ -7,6 +7,15 @@ import SideList from './components/SideList';
 import { MdEdit } from "react-icons/md";
 import StaticStation from './components/StaticStation';
 
+function getWindowDimensions() {
+  const { innerWidth: width, innerHeight: height } = window;
+  console.log(`Current width: ${width}\nCurrent height: ${height}`);
+  return {
+    width,
+    height
+  };
+}
+
 function App() {
   const [jsonData, setJsonData] = useState([]);
   const [errServer, setErrServer] = useState(false);
@@ -21,6 +30,17 @@ function App() {
   const [staticStation, setStaticStation] = useState([]);
   const [isOnVPN, setIsOnVPN] = useState(true);
   const [route, setRoute] = useState('/api/confidential');
+  const [windowDimensions, setWindowDimensions] = useState(getWindowDimensions());
+
+  useEffect(() => {
+    function handleResize() {
+      setWindowDimensions(getWindowDimensions());
+    }
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
 
   const sideMarkerClickHandler = (lat, lon) => {
     setCentroMappa([lat, lon]);
@@ -72,7 +92,7 @@ function App() {
         console.error('Error fetching filtered data:', error);
         setErrServer(true);
       });
-  }, [route,dayDate, errServer]);
+  }, [route, dayDate, errServer]);
 
   useEffect(() => {
     fetchFilteredData();
@@ -100,17 +120,19 @@ function App() {
         <p className='text-sm text-gray-500'>Visualizza i dati dei sensori di PM 2.5 in tempo reale</p>
       </div>
       <div className='m-3'>
-        <div className="flex w-full h-[80vh] border-2 border-gray-300 rounded overflow-hidden p-4">
-          <div className="w-1/5 overflow-y-auto h-full border-r border-gray-300 bg-white">
-            <h2 className='text-lg font-bold mb-2 sticky top-0 bg-white' >Dati Sensori</h2>
-            <SideList jsonData={filteredData} clickHandler={sideMarkerClickHandler} />
-          </div>
+        <div className="flex w-full h-[100vh] lg:h-[80vh] border-2 border-gray-300 rounded overflow-hidden p-4">
+          {windowDimensions.width > 1024 &&
+            <div className="w-1/5 overflow-y-auto h-full border-r border-gray-300 bg-white">
+              <h2 className='text-lg font-bold mb-2 sticky top-0 bg-white' >Dati Sensori</h2>
+              <SideList jsonData={filteredData} clickHandler={sideMarkerClickHandler} />
+            </div>
+          }
           <div className="flex-1 h-full">
             <Map centroMappa={centroMappa} jsonData={filteredData} zoom={zoom} staticStation={staticStation} />
           </div>
         </div>
         <ToastContainer />
-        <div className='flex space-x-4 justify-between mt-2'>
+        <div className='flex flex-col lg:flex-row lg:space-x-4 lg:justify-between mt-2'>
           <div className='flex flex-row items-center space-x-2'>
             <label htmlFor="dayDate">Seleziona Giorno:</label>
             <input
@@ -136,7 +158,13 @@ function App() {
           </div>
         </div>
       </div>
-      {isOnVPN && <StaticStation  setStaticStation={setStaticStation} loading={isOnVPN} setLoading={setIsOnVPN} />}
+      {windowDimensions.width <= 1024 &&
+          <div className="w-full overflow-y-auto h-full border-r border-gray-300 bg-white">
+            <h2 className='text-lg font-bold mb-2 sticky top-0 bg-white' >Dati Sensori</h2>
+            <SideList jsonData={filteredData} clickHandler={sideMarkerClickHandler} />
+          </div>
+        }
+      {isOnVPN && <StaticStation setStaticStation={setStaticStation} loading={isOnVPN} setLoading={setIsOnVPN} />}
     </>
   );
 }
