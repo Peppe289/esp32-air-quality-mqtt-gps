@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 
 const StaticStation = ({ setStaticStation, loading, setLoading}) => {
     const [data, setData] = useState([]);
+    const addr = import.meta.env.VITE_SERVER_ADDR || "";
     
     const [filters, setFilters] = useState({
         station_id: '',
@@ -10,7 +11,7 @@ const StaticStation = ({ setStaticStation, loading, setLoading}) => {
     });
 
     useEffect(() => {
-        fetch(`/api/confidential/static-station`)
+        fetch(addr + `/api/confidential/static-station`)
             .then((response) => {
                 if (response.ok) {
                     toast.success('Dati stazioni fisse caricati con successo!');
@@ -35,7 +36,7 @@ const StaticStation = ({ setStaticStation, loading, setLoading}) => {
                 limit: filters.limit
             }).toString();
 
-            const response = await fetch(`/api/confidential/history-stazioni?${queryParams}`);
+            const response = await fetch(addr + `/api/confidential/history-stazioni?${queryParams}`);
             if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
 
             if (response.status === 403) {

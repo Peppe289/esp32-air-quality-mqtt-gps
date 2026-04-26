@@ -29,7 +29,8 @@ function App() {
   const [zoom, setZoom] = useState(15);
   const [staticStation, setStaticStation] = useState([]);
   const [isOnVPN, setIsOnVPN] = useState(true);
-  const [route, setRoute] = useState('/api/confidential');
+  const addr = import.meta.env.VITE_SERVER_ADDR || "";
+  const [route, setRoute] = useState(addr + '/api/confidential');
   const [windowDimensions, setWindowDimensions] = useState(getWindowDimensions());
 
   useEffect(() => {
@@ -73,7 +74,7 @@ function App() {
     fetch(`${route}/data?day=${dayDate}`)
       .then((response) => {
         if (!response.ok) {
-          setRoute('/api/public');
+          setRoute(addr + '/api/public');
         }
         return response.json();
       })
@@ -92,7 +93,7 @@ function App() {
         console.error('Error fetching filtered data:', error);
         setErrServer(true);
       });
-  }, [route, dayDate, errServer]);
+  }, [dayDate, addr, route, errServer]);
 
   useEffect(() => {
     fetchFilteredData();
