@@ -1,9 +1,40 @@
 
-import React, { useEffect } from 'react';
-import { MapContainer, TileLayer, CircleMarker, Tooltip, useMap } from 'react-leaflet';
+import React, { useEffect, useState } from 'react';
+import { useMapEvents, MapContainer, TileLayer, CircleMarker, Polygon, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet.heat';
 import 'leaflet/dist/leaflet.css';
+
+function AreaSelector({ points, setPoints }) {
+  useMapEvents({
+    click(e) {
+      const { lat, lng } = e.latlng;
+      setPoints((prev) => [...prev, [lat, lng]]);
+    },
+  });
+
+  return (
+    <>
+      {/* Punti piccolini (CircleMarker non sgranano con lo zoom) */}
+      {points.map((p, i) => (
+        <CircleMarker 
+          key={i} 
+          center={p} 
+          radius={4} 
+          pathOptions={{ color: 'red', fillColor: 'red', fillOpacity: 1 }} 
+        />
+      ))}
+      
+      {/* Disegna il poligono se ci sono almeno 3 punti */}
+      {points.length >= 3 && (
+        <Polygon 
+          positions={points} 
+          pathOptions={{ color: 'blue', fillColor: 'blue', fillOpacity: 0.2 }} 
+        />
+      )}
+    </>
+  );
+}
 
 function StaticMarkers({ staticStation }) {
   return (
@@ -48,11 +79,13 @@ const getColor = (value) => {
         '#22c55e';
 };
 
-function Map({ jsonData, zoom, centroMappa, staticStation }) {
+function Map({ jsonData, zoom, centroMappa, staticStation, userPoints, setUserPoints}) {
+  
   return (
     <div style={{ height: "100%", width: "100%" }}>
-      <MapContainer center={centroMappa} zoom={zoom} style={{ height: "100%", width: "100%" }}>
+      <MapContainer center={centroMappa} zoom={zoom} style={{ height: "100%", width: "100%" }} zoomControl={false}>
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+        <AreaSelector points={userPoints} setPoints={setUserPoints} ></AreaSelector>
 
         <ChangeView center={centroMappa} zoom={zoom} />
 

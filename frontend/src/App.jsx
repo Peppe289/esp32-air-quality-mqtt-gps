@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { MdMenu, MdClose } from "react-icons/md";
 import Map from './components/Map';
 import { Slide, ToastContainer, toast } from 'react-toastify';
 import TimeRangeSlider from './components/TimeRangeSlider';
@@ -6,15 +7,7 @@ import './style.css';
 import SideList from './components/SideList';
 import { MdEdit } from "react-icons/md";
 import StaticStation from './components/StaticStation';
-
-function getWindowDimensions() {
-  const { innerWidth: width, innerHeight: height } = window;
-  console.log(`Current width: ${width}\nCurrent height: ${height}`);
-  return {
-    width,
-    height
-  };
-}
+import Helper from './components/Helper';
 
 function App() {
   const [jsonData, setJsonData] = useState([]);
@@ -31,16 +24,10 @@ function App() {
   const [isOnVPN, setIsOnVPN] = useState(true);
   const addr = import.meta.env.VITE_SERVER_ADDR || "";
   const [route, setRoute] = useState(addr + '/api/confidential');
-  const [windowDimensions, setWindowDimensions] = useState(getWindowDimensions());
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isHelperOpen, setIsHelperOpen] = useState(false);
+  const [userPoints, setUserPoints] = useState([]);
 
-  useEffect(() => {
-    function handleResize() {
-      setWindowDimensions(getWindowDimensions());
-    }
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
 
   const sideMarkerClickHandler = (lat, lon) => {
@@ -87,9 +74,6 @@ function App() {
         setErrServer(false);
       })
       .catch((error) => {
-        //if (!errServer) {
-        //  toast.error('Errore durante il filtraggio dei dati!');
-        //}
         console.error('Error fetching filtered data:', error);
         setErrServer(true);
       });
@@ -114,58 +98,125 @@ function App() {
       }));
   }, [jsonData, timelineRange]);
 
+  const isInside = (point, vs) => {
+    // point è [lat, lng], vs è l'array di vertici [[lat, lng], ...]
+    const x = point[0], y = point[1];
+    let inside = false;
+    for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+      const xi = vs[i][0], yi = vs[i][1];
+      const xj = vs[j][0], yj = vs[j][1];
+      const intersect = ((yi > y) !== (yj > y)) &&
+        (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  };
+
+  const dataInArea = useMemo(() => {
+    // Se non hai almeno 3 punti, il poligono non esiste.
+    // Quindi usa tutti i dati
+    if (userPoints.length < 3) return filteredData;
+
+    // Filtriamo jsonData (assumendo che ogni oggetto abbia .lat e .lon)
+    return filteredData.filter(sensor =>
+      isInside([sensor.lat, sensor.lon], userPoints)
+    );
+  }, [userPoints, filteredData]);
+
+  const stats = useMemo(() => {
+    if (dataInArea.length === 0) return {
+      avgPm25: 'N/A',
+      avgPm10: 'N/A',
+      avgPm1: 'N/A',
+      count: 0
+    };
+
+    const total = dataInArea.reduce((acc, curr) => {
+      return {
+        pm25: acc.pm25 + curr.pm2_5,
+        pm10: acc.pm10 + curr.pm10,
+        pm1: acc.pm1 + curr.pm1_0
+      };
+    }, { pm25: 0, pm10: 0, pm1: 0 });
+
+    return {
+      avgPm25: (total.pm25 / dataInArea.length).toFixed(2),
+      avgPm10: (total.pm10 / dataInArea.length).toFixed(2),
+      avgPm1: (total.pm1 / dataInArea.length).toFixed(2),
+      count: dataInArea.length
+    };
+  }, [dataInArea]);
+
   return (
     <>
       <div className='flex items-center justify-center flex-col mt-4'>
         <h1 className='text-3xl font-bold text-gray-800'>PM 2.5 Monitoraggio</h1>
         <p className='text-sm text-gray-500'>Visualizza i dati dei sensori di PM 2.5 in tempo reale</p>
       </div>
-      <div className='m-3'>
-        <div className="flex w-full h-[100vh] lg:h-[80vh] border-2 border-gray-300 rounded overflow-hidden p-4">
-          {windowDimensions.width > 1024 &&
-            <div className="w-1/5 overflow-y-auto h-full border-r border-gray-300 bg-white">
-              <h2 className='text-lg font-bold mb-2 sticky top-0 bg-white' >Dati Sensori</h2>
-              <SideList jsonData={filteredData} clickHandler={sideMarkerClickHandler} />
+      <div className="m-auto w-[96%] flex justify-center items-center">
+        <div className="m-4 relative flex w-full h-[70vh] border border-gray-300 rounded-xl shadow-inner overflow-hidden">
+
+          {/* Pulsante Toggle Sinistro (SideList) */}
+          <button
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="absolute top-4 left-4 z-[1100] p-2 bg-white rounded-md shadow-md border border-gray-200 hover:bg-gray-100 transition-colors"
+            title={isSidebarOpen ? "Chiudi lista" : "Apri lista"}
+          >
+            {isSidebarOpen ? <MdClose size={24} /> : <MdMenu size={24} />}
+          </button>
+
+          {/* Pulsante Toggle Destro (Helper) - NUOVO */}
+          <button
+            onClick={() => setIsHelperOpen(!isHelperOpen)}
+            className="absolute top-4 right-4 z-[1100] p-2 bg-white rounded-md shadow-md border border-gray-200 hover:bg-gray-100 transition-colors"
+            title={isHelperOpen ? "Chiudi Helper" : "Apri Helper"}
+          >
+            {isHelperOpen ? <MdClose size={24} /> : <MdEdit size={24} />}
+          </button>
+
+          {/* SideList (Lato Sinistro) */}
+          <div className={`absolute top-4 left-4 z-[1000] w-72 max-h-[calc(100%-2rem)] overflow-y-auto bg-white/90 backdrop-blur-sm shadow-lg rounded-lg border border-gray-200 transition-all duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0 opacity-100' : '-translate-x-full opacity-0 pointer-events-none'
+            }`}>
+            <div className="p-3 pt-14 border-b border-gray-100 bg-gray-50/50 sticky top-0 z-10">
+              <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wider">Dati Sensori</h2>
             </div>
-          }
-          <div className="flex-1 h-full">
-            <Map centroMappa={centroMappa} jsonData={filteredData} zoom={zoom} staticStation={staticStation} />
+            <SideList jsonData={filteredData} clickHandler={sideMarkerClickHandler} />
           </div>
-        </div>
-        <ToastContainer />
-        <div className='flex flex-col lg:flex-row lg:space-x-4 lg:justify-between mt-2'>
-          <div className='flex flex-row items-center space-x-2'>
-            <label htmlFor="dayDate">Seleziona Giorno:</label>
-            <input
-              className='border-2 border-gray-300 rounded m-2 p-1 w-48'
-              type="date"
-              id="dayDate"
-              value={dayDate}
-              onChange={handleDateChange}
-            />
+
+          {/* Helper (Lato Destro) - NUOVO */}
+          <div className={`absolute top-4 right-4 z-[1000] w-80 max-h-[calc(100%-2rem)] overflow-y-auto bg-white/95 backdrop-blur-sm shadow-lg rounded-lg border border-gray-200 transition-all duration-300 ease-in-out ${isHelperOpen ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0 pointer-events-none'
+            }`}>
+            <div className="p-3 pt-14 border-b border-gray-100 bg-gray-50/50 sticky top-0 z-10">
+              <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wider">Strumenti Analisi</h2>
+            </div>
+            <div className="p-4">
+              <Helper
+                userPoints={userPoints}
+                setUserPoints={setUserPoints}
+                dayDate={dayDate}
+                handleDateChange={handleDateChange}
+                updateInterval={updateInterval}
+                setUpdateInterval={setUpdateInterval}
+                latency={latency}
+                stats={stats}
+              />
+            </div>
           </div>
-          <TimeRangeSlider min={MIN} max={MAX} values={timelineRange} setValues={setTimelineRange} />
-          <div className='flex flex-col items-end'>
-            <label htmlFor="updateInterval">Update Interval (ms):</label>
-            <input readOnly={dayDate == (new Date().toISOString().split('T')[0]) ? false : true}
-              className={`border-2 border-gray-300 rounded m-2 p-1 w-24 ${dayDate == (new Date().toISOString().split('T')[0]) ? '' : 'bg-gray-200 cursor-pointer'}`}
-              type="number"
-              id="updateInterval"
-              onClick={dayDate != (new Date().toISOString().split('T')[0]) ? () => toast.error('Per modificare l\'intervallo di aggiornamento, seleziona la data odierna!') : undefined}
-              value={updateInterval}
-              onChange={(e) => setUpdateInterval(Number(e.target.value))}
-            />
-            <p className='text-sm text-gray-500'>Latency: {latency} ms</p>
+
+          {/* Mappa */}
+          <div className="flex-1 h-full z-10">
+            <Map userPoints={userPoints} setUserPoints={setUserPoints} centroMappa={centroMappa} jsonData={filteredData} zoom={zoom} staticStation={staticStation} />
           </div>
         </div>
       </div>
-      {windowDimensions.width <= 1024 &&
-          <div className="w-full overflow-y-auto h-full border-r border-gray-300 bg-white">
-            <h2 className='text-lg font-bold mb-2 sticky top-0 bg-white' >Dati Sensori</h2>
-            <SideList jsonData={filteredData} clickHandler={sideMarkerClickHandler} />
-          </div>
-        }
+
+      {/* Slider Temporale */}
+      <div className="flex-1 w-full">
+        <TimeRangeSlider min={MIN} max={MAX} values={timelineRange} setValues={setTimelineRange} />
+      </div>
       {isOnVPN && <StaticStation setStaticStation={setStaticStation} loading={isOnVPN} setLoading={setIsOnVPN} />}
+
+      <ToastContainer transition={Slide} />
     </>
   );
 }

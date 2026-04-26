@@ -27,7 +27,7 @@ const StaticStation = ({ setStaticStation, loading, setLoading}) => {
             .catch((error) => {
                 console.error('Errore durante il fetch:', error);
             });
-    }, [setStaticStation]);
+    }, [addr, setStaticStation]);
 
     const fetchData = useCallback(async () => {
         try {
@@ -42,7 +42,6 @@ const StaticStation = ({ setStaticStation, loading, setLoading}) => {
             if (response.status === 403) {
                 //toast.error('Accesso negato. Assicurati di essere connesso alla VPN aziendale.');
                 throw new Error('Accesso negato: VPN richiesta');
-                return;
             }
 
             const rawResponse = await response.json();
@@ -60,7 +59,7 @@ const StaticStation = ({ setStaticStation, loading, setLoading}) => {
             console.error("❌ Errore Fetch:", error);
             setLoading(false);
         }
-    }, [filters.station_id, filters.limit, setLoading]);
+    }, [filters.station_id, filters.limit, addr, setLoading]);
 
     useEffect(() => {
         fetchData();
