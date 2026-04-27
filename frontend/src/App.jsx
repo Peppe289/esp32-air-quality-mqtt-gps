@@ -29,8 +29,6 @@ function App() {
   const [isHelperOpen, setIsHelperOpen] = useState(false);
   const [userPoints, setUserPoints] = useState([]);
 
-
-
   const sideMarkerClickHandler = (lat, lon) => {
     setCentroMappa([lat, lon]);
     setZoom(18); // Zoom più ravvicinato
@@ -69,8 +67,21 @@ function App() {
       .then((data) => {
         const end = new Date();
         setLatency(end - start);
-        console.log('Giorno: ', dayDate);
-        setJsonData(data.results);
+
+        const results = data.results;
+        setJsonData(results); // 1. Aggiorna i dati
+
+        // 2. Calcola i limiti e aggiorna lo slider QUI dentro
+        if (results && results.length > 0) {
+          const timestamps = results.map(d => new Date(d.orario).getTime());
+          const dMin = Math.min(...timestamps);
+          const dMax = Math.max(...timestamps);
+          setTimelineRange([dMin, dMax]); // Aggiornamento "batch" (nello stesso ciclo)
+        } else {
+          // Se non ci sono dati, resetta al giorno intero
+          setTimelineRange([MIN, MAX]);
+        }
+
         if (errServer) toast.success('Dati filtrati ricevuti con successo!');
         setErrServer(false);
       })
@@ -78,7 +89,7 @@ function App() {
         console.error('Error fetching filtered data:', error);
         setErrServer(true);
       });
-  }, [dayDate, addr, route, errServer]);
+  }, [dayDate, addr, route, errServer, MIN, MAX]); // Aggiungi MIN e MAX alle dipendenze
 
   useEffect(() => {
     fetchFilteredData();
