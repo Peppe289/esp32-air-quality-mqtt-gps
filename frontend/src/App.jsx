@@ -238,8 +238,10 @@ function App() {
         <div className="mt-2">
           <TimeRangeSlider min={MIN} max={MAX} values={timelineRange} setValues={setTimelineRange} />
         </div>
+        <div className='mt-4 mb-4'>
+            {isOnVPN && <StaticStation setStaticStation={setStaticStation} setLoading={setIsOnVPN} selectedIds={selectedIds} setSelectedIds={setSelectedIds} />}
+        </div>
       </div>
-      {isOnVPN && <StaticStation setStaticStation={setStaticStation} setLoading={setIsOnVPN} selectedIds={selectedIds} setSelectedIds={setSelectedIds} />}
 
       <ToastContainer transition={Slide} />
     </>
