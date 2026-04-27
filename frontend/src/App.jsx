@@ -8,6 +8,7 @@ import SideList from './components/SideList';
 import { MdEdit } from "react-icons/md";
 import StaticStation from './components/StaticStation';
 import Helper from './components/Helper';
+import DailyChartBar from './components/DailyChartBar';
 
 function App() {
   const [jsonData, setJsonData] = useState([]);
@@ -210,9 +211,13 @@ function App() {
         </div>
       </div>
 
-      {/* Slider Temporale */}
-      <div className="flex-1 w-full">
-        <TimeRangeSlider min={MIN} max={MAX} values={timelineRange} setValues={setTimelineRange} />
+      {/* Inseriscilo tra la mappa e lo slider */}
+      <div className="w-11/12 m-auto">
+        <DailyChartBar jsonData={filteredData} /> {/* Usiamo jsonData (tutto il giorno) non filteredData */}
+
+        <div className="mt-2">
+          <TimeRangeSlider min={MIN} max={MAX} values={timelineRange} setValues={setTimelineRange} />
+        </div>
       </div>
       {isOnVPN && <StaticStation setStaticStation={setStaticStation} loading={isOnVPN} setLoading={setIsOnVPN} />}
 
