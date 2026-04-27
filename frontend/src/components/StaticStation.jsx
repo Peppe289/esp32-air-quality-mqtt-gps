@@ -1,23 +1,39 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { toast } from 'react-toastify';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { MdRefresh, MdSettingsInputAntenna, MdCheckBox, MdCheckBoxOutlineBlank, MdFilterList } from "react-icons/md";
 
-const StaticStation = ({ setStaticStation, loading, setLoading}) => {
+const StaticStation = ({ selectedIds, setSelectedIds, setStaticStation, setLoading }) => {
     const [data, setData] = useState([]);
+    const [showSelector, setShowSelector] = useState(false);
+
     const addr = import.meta.env.VITE_SERVER_ADDR || "";
-    
-    const [filters, setFilters] = useState({
-        station_id: '',
-        limit: 100
-    });
+
+    const fetchData = useCallback(() => {
+        fetch(addr + `/api/confidential/history-stazioni?limit=100`)
+            .then(response => {
+                if (!response.ok) throw new Error("Errore rete");
+                return response.json(); // Ritorna la Promise del JSON
+            })
+            .then(rawResponse => {
+                // Ora rawResponse è l'oggetto/array reale
+                setData(
+                    Array.isArray(rawResponse) ? rawResponse : (rawResponse.data || rawResponse.results || [])
+                );
+            })
+            .catch(err => console.error("Errore fetch:", err));
+    }, [addr])
+
+    useEffect(() => {
+        const interval = setInterval(fetchData, 5000);
+        return () => clearInterval(interval);
+    }, [fetchData]);
 
     useEffect(() => {
         fetch(addr + `/api/confidential/static-station`)
             .then((response) => {
                 if (response.ok) {
-                    toast.success('Dati stazioni fisse caricati con successo!');
                     return response.json();
                 } else {
-                    toast.error('Errore nel caricamento dei dati delle stazioni fisse. Assicurati di essere connesso alla VPN aziendale.');
+                    setLoading(false);
                     throw new Error('Errore nella richiesta: ' + response.status);
                 }
             })
@@ -27,52 +43,24 @@ const StaticStation = ({ setStaticStation, loading, setLoading}) => {
             .catch((error) => {
                 console.error('Errore durante il fetch:', error);
             });
-    }, [addr, setStaticStation]);
+    }, [addr, setStaticStation, setLoading]);
 
-    const fetchData = useCallback(async () => {
-        try {
-            const queryParams = new URLSearchParams({
-                station_id: filters.station_id,
-                limit: filters.limit
-            }).toString();
+    const groupedData = useMemo(() => {
+        const hashmap = {};
+        data.forEach(item => {
+            const id = item.station_id || item.ID || item.station_ID || 'Sconosciuto';
+            if (!hashmap[id]) hashmap[id] = [];
+            hashmap[id].push(item);
+        });
+        return hashmap;
+    }, [data]);
 
-            const response = await fetch(addr + `/api/confidential/history-stazioni?${queryParams}`);
-            if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+    const allAvailableIds = Object.keys(groupedData).sort();
 
-            if (response.status === 403) {
-                //toast.error('Accesso negato. Assicurati di essere connesso alla VPN aziendale.');
-                throw new Error('Accesso negato: VPN richiesta');
-            }
-
-            const rawResponse = await response.json();
-
-            // Log critico: controlla la console del browser per vedere la struttura
-            console.log("Dati ricevuti dal server:", rawResponse);
-
-            // Gestione flessibile della risposta (array diretto o oggetto avvolto)
-            const finalData = Array.isArray(rawResponse)
-                ? rawResponse
-                : (rawResponse.data || rawResponse.results || []);
-
-            setData(finalData);
-        } catch (error) {
-            console.error("❌ Errore Fetch:", error);
-            setLoading(false);
-        }
-    }, [filters.station_id, filters.limit, addr, setLoading]);
-
-    useEffect(() => {
-        fetchData();
-        const interval = setInterval(fetchData, 1000);
-        return () => clearInterval(interval);
-    }, [fetchData]);
-
-    // Funzione helper per estrarre valori indipendentemente dal nome della chiave (case-insensitive)
-    const getVal = (obj, keys) => {
-        for (let key of keys) {
-            if (obj[key] !== undefined && obj[key] !== null) return obj[key];
-        }
-        return null;
+    const toggleStationSelection = (id) => {
+        setSelectedIds(prev =>
+            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+        );
     };
 
     const formatNum = (val) => {
@@ -81,91 +69,111 @@ const StaticStation = ({ setStaticStation, loading, setLoading}) => {
     };
 
     return (
-        <div style={{ padding: '20px', backgroundColor: '#f9f9f9', minHeight: '100vh' }}>
-            <div style={containerStyle}>
-                <div style={headerStyle}>
-                    <h2 style={{ margin: 0, color: '#2c3e50' }}>📊 Monitoraggio Stazioni Fisse</h2>
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                        <input
-                            placeholder="Cerca ID Stazione..."
-                            value={filters.station_id}
-                            onChange={(e) => setFilters(prev => ({ ...prev, station_id: e.target.value }))}
-                            style={inputStyle}
-                        />
-                        <button onClick={fetchData} style={btnStyle}>🔄 Aggiorna</button>
-                    </div>
+        <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 shadow-inner">
+            {/* Toolbar Superiore */}
+            <div className="flex justify-between items-center mb-6">
+                <div className="flex items-center gap-2">
+                    <MdSettingsInputAntenna className="text-blue-600 text-2xl" />
+                    <h2 className="text-lg font-bold text-gray-800">Monitoraggio Selettivo</h2>
                 </div>
 
-                <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead>
-                            <tr style={{ backgroundColor: '#34495e', color: '#fff' }}>
-                                <th style={thStyle}>ID Stazione</th>
-                                <th style={thStyle}>Orario</th>
-                                <th style={thStyle}>PM 1.0</th>
-                                <th style={thStyle}>PM 2.5</th>
-                                <th style={thStyle}>PM 10</th>
-                                <th style={thStyle}>Temp</th>
-                                <th style={thStyle}>Dispositivi</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {data.length > 0 ? data.map((row, index) => (
-                                <tr key={row.id || index} style={trStyle}>
-                                    {/* Mappatura intelligente delle colonne */}
-                                    <td style={tdStyle}>
-                                        <span style={idBadge}>{getVal(row, ['station_id', 'ID', 'station_ID']) || 'N/D'}</span>
-                                    </td>
-                                    <td style={tdStyle}>
-                                        {row.orario ? new Date(row.orario).toLocaleTimeString() : '--:--'}
-                                    </td>
-                                    <td style={{ ...tdStyle, fontWeight: 'bold', color: '#e67e22' }}>
-                                        {formatNum(getVal(row, ['pm1_0', 'pm1', 'PM1.0']))}
-                                    </td>
-                                    <td style={{ ...tdStyle, fontWeight: 'bold', color: '#e67e22' }}>
-                                        {formatNum(getVal(row, ['pm2_5', 'pm25', 'PM2.5']))}
-                                    </td>
-                                    <td style={{ ...tdStyle, fontWeight: 'bold', color: '#d35400' }}>
-                                        {formatNum(getVal(row, ['pm10', 'PM10']))}
-                                    </td>
-                                    <td style={tdStyle}>
-                                        {formatNum(getVal(row, ['temperatura', 'temp', 'temperature']))}°C
-                                    </td>
-                                    <td style={tdStyle}>
-                                        {getVal(row, ['dispositivi_rilevati', 'num_devices_sniffed', 'dispositivi']) ?? '--'}
-                                    </td>
-                                </tr>
-                            )) : (
-                                <tr>
-                                    <td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: '#7f8c8d' }}>
-                                        {loading ? "📡 In attesa di dati dalla VPN..." : "📭 Nessun dato trovato."}
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
+                <div className="flex gap-2">
+                    {/* Bottone per aprire il selettore */}
+                    <button
+                        onClick={() => setShowSelector(!showSelector)}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all ${showSelector ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+                            }`}
+                    >
+                        <MdFilterList />
+                        <span className="text-sm font-medium">Seleziona Stazioni ({selectedIds.length})</span>
+                    </button>
+                    <button onClick={fetchData} className="bg-gray-200 p-2 rounded-lg hover:bg-gray-300">
+                        <MdRefresh size={20} />
+                    </button>
                 </div>
             </div>
 
-            {/* Footer di Debug: utile per te per vedere l'ultimo oggetto ricevuto */}
-            {data.length > 0 && (
-                <div style={debugFooter}>
-                    <strong>Debug Ultimo Record:</strong> {JSON.stringify(data[0]).substring(0, 100)}...
+            {/* Pannello di Selezione (Dropdown/Grid) */}
+            {showSelector && (
+                <div className="mb-6 p-4 bg-white border border-blue-200 rounded-lg shadow-sm animate-fadeIn">
+                    <p className="text-[10px] font-bold text-blue-500 uppercase mb-3 tracking-widest">Scegli le stazioni da monitorare:</p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                        {allAvailableIds.map(id => (
+                            <div
+                                key={id}
+                                onClick={() => toggleStationSelection(id)}
+                                className={`flex items-center gap-2 p-2 rounded-md cursor-pointer border transition-all ${selectedIds.includes(id)
+                                    ? 'bg-blue-50 border-blue-400 text-blue-700'
+                                    : 'bg-gray-50 border-gray-200 text-gray-500 hover:border-gray-300'
+                                    }`}
+                            >
+                                {selectedIds.includes(id) ? <MdCheckBox /> : <MdCheckBoxOutlineBlank />}
+                                <span className="text-xs font-mono font-bold">{id}</span>
+                            </div>
+                        ))}
+                    </div>
+                    {selectedIds.length > 0 && (
+                        <button
+                            onClick={() => setSelectedIds([])}
+                            className="mt-4 text-[10px] text-red-500 underline hover:text-red-700"
+                        >
+                            Deseleziona tutte
+                        </button>
+                    )}
                 </div>
             )}
+
+            {/* Visualizzazione Stazioni Selezionate */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {selectedIds.length > 0 ? (
+                    selectedIds.map(stationId => {
+                        const measurements = groupedData[stationId] || [];
+                        const lastM = measurements[0] || {}; // Ultima rilevazione
+
+                        return (
+                            <div key={stationId} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+                                <div className="flex justify-between items-start mb-4">
+                                    <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-[10px] font-black">
+                                        STAZIONE {stationId}
+                                    </span>
+                                    <span className="text-[10px] text-gray-400 font-mono">
+                                        LIVE: {lastM.orario ? new Date(lastM.orario).toLocaleTimeString() : '--'}
+                                    </span>
+                                </div>
+
+                                <div className="grid grid-cols-3 gap-2">
+                                    <div className="bg-orange-50 p-2 rounded-lg text-center">
+                                        <p className="text-[9px] text-orange-400 font-bold uppercase">PM 2.5</p>
+                                        <p className="text-lg font-black text-orange-600">{formatNum(lastM.pm2_5)}</p>
+                                    </div>
+                                    <div className="bg-red-50 p-2 rounded-lg text-center">
+                                        <p className="text-[9px] text-red-400 font-bold uppercase">PM 10</p>
+                                        <p className="text-lg font-black text-red-600">{formatNum(lastM.pm10)}</p>
+                                    </div>
+                                    <div className="bg-green-50 p-2 rounded-lg text-center">
+                                        <p className="text-[9px] text-green-400 font-bold uppercase">Temp</p>
+                                        <p className="text-lg font-black text-green-600">{formatNum(lastM.temperatura || lastM.temp)}°</p>
+                                    </div>
+                                </div>
+
+                                <div className="mt-4 pt-3 border-t border-gray-50 flex justify-between items-center text-[10px] text-gray-400">
+                                    <span>Storico: {measurements.length} campioni</span>
+                                    <span>Sensore attivo</span>
+                                </div>
+                            </div>
+                        );
+                    })
+                ) : (
+                    <div className="col-span-full py-12 text-center border-2 border-dashed border-gray-200 rounded-xl">
+                        <p className="text-gray-400 text-sm">
+                            Nessuna stazione selezionata. <br />
+                            Usa il tasto <strong className="text-blue-500">"Seleziona Stazioni"</strong> in alto per iniziare il monitoraggio.
+                        </p>
+                    </div>
+                )}
+            </div>
         </div>
     );
 };
-
-// --- STILI ---
-const containerStyle = { backgroundColor: '#fff', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', overflow: 'hidden' };
-const headerStyle = { padding: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee' };
-const thStyle = { padding: '15px', textAlign: 'left', fontSize: '12px', letterSpacing: '1px' };
-const tdStyle = { padding: '15px', fontSize: '14px', color: '#444' };
-const trStyle = { borderBottom: '1px solid #f1f1f1' };
-const inputStyle = { padding: '10px', borderRadius: '6px', border: '1px solid #ddd', outline: 'none', width: '200px' };
-const btnStyle = { padding: '10px 20px', cursor: 'pointer', backgroundColor: '#3498db', color: 'white', border: 'none', borderRadius: '6px', transition: '0.2s' };
-const idBadge = { backgroundColor: '#ecf0f1', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold', color: '#2c3e50' };
-const debugFooter = { marginTop: '20px', fontSize: '10px', color: '#bdc3c7', textAlign: 'center', fontSpace: 'monospace' };
 
 export default StaticStation;

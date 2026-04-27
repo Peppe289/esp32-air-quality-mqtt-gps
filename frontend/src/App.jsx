@@ -28,6 +28,7 @@ function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isHelperOpen, setIsHelperOpen] = useState(false);
   const [userPoints, setUserPoints] = useState([]);
+  const [selectedIds, setSelectedIds] = useState([]);
 
   const sideMarkerClickHandler = (lat, lon) => {
     setCentroMappa([lat, lon]);
@@ -217,7 +218,15 @@ function App() {
 
           {/* Mappa */}
           <div className="flex-1 h-full z-10">
-            <Map userPoints={userPoints} setUserPoints={setUserPoints} centroMappa={centroMappa} jsonData={filteredData} zoom={zoom} staticStation={staticStation} />
+            <Map
+              selectedPoint={selectedIds}
+              userPoints={userPoints}
+              setUserPoints={setUserPoints}
+              centroMappa={centroMappa}
+              jsonData={filteredData}
+              zoom={zoom}
+              staticStation={staticStation}
+              setSelectedStation={setSelectedIds} />
           </div>
         </div>
       </div>
@@ -230,7 +239,7 @@ function App() {
           <TimeRangeSlider min={MIN} max={MAX} values={timelineRange} setValues={setTimelineRange} />
         </div>
       </div>
-      {isOnVPN && <StaticStation setStaticStation={setStaticStation} loading={isOnVPN} setLoading={setIsOnVPN} />}
+      {isOnVPN && <StaticStation setStaticStation={setStaticStation} setLoading={setIsOnVPN} selectedIds={selectedIds} setSelectedIds={setSelectedIds} />}
 
       <ToastContainer transition={Slide} />
     </>
