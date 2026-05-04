@@ -1,7 +1,7 @@
 # ESP32 HM3301 & GPS
 
 <div style="width: 100%; display:flex; justify-content: center;">
-  <img src="icon.png" style="width: 300px"/>
+  <img src="assets/icon.png" style="width: 300px"/>
 </div>
 
 # ESP32 Firmware
@@ -74,6 +74,10 @@ MQTT_CONFIDENTIALS_TOPIC=<#>
 The **vpnOnly** middleware identifies clients based on the `10.6.0.0/24` subnet. Ensure your **WireGuard** or **OpenVPN** server correctly forwards the client's real IP address via headers if using a reverse proxy.
 
 # Frontend
+
+<div style="width: 100%; display:flex; justify-content: center;">
+  <img src="assets/webapp.png" style="width: 600px; padding: 30px"/>
+</div>
 
 A React-based frontend application that visualizes environmental monitoring data on an interactive map. It displays sampling points from mobile sensors and provides access to fixed station data restricted to VPN connections.
 
