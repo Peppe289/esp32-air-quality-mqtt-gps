@@ -33,13 +33,17 @@ const client = mqtt.connect(BROKER_URL, connectionOptions);
 client.on('connect', () => {
     console.log('✅ [MQTT MOBILE] Connected via WebSocket');
 
-    const topic = process.env.MQTT_APPLICATION_TOPIC;
+    // Definiamo i topic (assicurati di aggiungere MQTT_BACKUP_TOPIC nel tuo .env)
+    const primaryTopic = process.env.MQTT_APPLICATION_TOPIC;
+    const backupTopic = process.env.MQTT_BACKUP_TOPIC || 'airquality/backup';
+    
+    const topicsToSubscribe = [primaryTopic, backupTopic];
 
-    client.subscribe(topic, (err) => {
+    client.subscribe(topicsToSubscribe, (err) => {
         if (err) {
             console.error(`❌ [MQTT ERROR] Subscription failed on ${BROKER_URL}:`, err.message);
         } else {
-            console.log(`📡 [MQTT MOBILE] Subscribed to topic: ${topic}`);
+            console.log(`📡 [MQTT MOBILE] Subscribed to topics: ${topicsToSubscribe.join(', ')}`);
         }
     });
 });
@@ -52,10 +56,14 @@ client.on('connect', () => {
  */
 client.on('message', (topic, message) => {
     try {
-        // Convert Buffer to String and then to JSON Object
         const rawData = JSON.parse(message.toString());
         
-        // Forward data to the service for processing, validation, and storage
+        // Log opzionale per distinguere i flussi in console
+        if (topic === process.env.MQTT_BACKUP_TOPIC) {
+            console.log(`📦 [BACKUP DATA] Received data from recovery topic`);
+        }
+
+        // Forward data to the service
         sensorService.processIncomingData(rawData);
         
     } catch (error) {
